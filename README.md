@@ -19,10 +19,14 @@ completion %, timeline health, and hours-logged charts.
 
 ## Architecture
 
-- **Backend**: Python (FastAPI) + PostgreSQL + SQLAlchemy + Alembic. See
-  `backend/app/`.
+- **Backend**: Python (FastAPI) + SQLAlchemy + Alembic. Defaults to a local
+  **SQLite** file (`backend/perftracker.db`) — no separate database server to
+  install or manage. Postgres is supported too (just change `DATABASE_URL`) if
+  you outgrow SQLite later. See `backend/app/`.
 - **Frontend**: React + TypeScript (Vite) + TanStack Query + React Router. See
-  `frontend/src/`.
+  `frontend/src/`. The production build is a handful of static files that
+  FastAPI serves directly (`backend/app/main.py`) — so the whole app runs as
+  **one process**, no separate frontend server needed once built.
 - **AI task breakdown**: a live call to the Claude API (`backend/app/services/ai_breakdown.py`),
   using forced tool-use so the response parses directly into task rows.
 - **Auth**: no real authentication in v1 — a lightweight role/engineer switcher
@@ -30,29 +34,63 @@ completion %, timeline health, and hours-logged charts.
   a single `get_current_actor()` dependency (`backend/app/core/auth_context.py`).
   Swapping in real auth later means rewriting that one function.
 
-## Running locally (standalone, via Docker)
+## Running standalone on a server (no Docker) — recommended
 
-Requires Docker (Docker Desktop on Windows/Mac, or Docker Engine on Linux).
+Requires **Python 3.11+** and, for the one-time frontend build step, **Node.js**
+(Node isn't needed afterward to *run* the app — only Python is).
+
+Copy this whole folder to the server, then:
+
+**Windows:**
+```bat
+setup.bat
+start.bat
+```
+
+**Mac/Linux:**
+```bash
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+alembic upgrade head
+cd ../frontend
+npm install && npm run build
+rm -rf ../backend/static && cp -r dist ../backend/static
+cd ../backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Either way, open `http://localhost:8000` (or `http://<server-ip>:8000` from
+another machine). Everything — API and UI — is served by that one process.
+
+To load sample demo data the first time, run `seed_sample_data.bat` (Windows)
+or `python scripts/seed_db.py` from an activated venv — **this wipes and
+reloads all data**, so only do it once, on a fresh install.
+
+To keep it running after you close the terminal / across reboots, wrap
+`start.bat` (or the `uvicorn` command) in a Windows Scheduled Task ("run
+whether user is logged on or not", trigger "at startup") or a Linux `systemd`
+service — ask if you want one written out for your exact setup.
+
+Set `ANTHROPIC_API_KEY` in `backend/.env` if you want the AI task-breakdown
+feature; everything else works without it.
+
+## Running via Docker instead
+
+If you'd rather containerize it (e.g. alongside other Dockerized services),
+a `docker-compose.yml` at the repo root runs Postgres + backend + an
+nginx-served frontend build:
 
 ```bash
 cp .env.example .env
-# edit .env: set POSTGRES_PASSWORD, and ANTHROPIC_API_KEY if you want the
-# AI task-breakdown feature to work
 docker compose up -d --build
 ```
 
-The app is then available at `http://localhost` (or whatever `HTTP_PORT` you set
-in `.env`). The frontend container serves the built React app via nginx and
-reverse-proxies `/api/*` to the backend container.
+See `docker-compose.yml` and each service's `Dockerfile` for details. This
+path uses Postgres rather than SQLite.
 
-To load sample demo data on first start, set `SEED_ON_START=true` in `.env`
-before bringing the stack up — **this wipes and reseeds all data**, so only use
-it for a fresh install, not on an existing database.
-
-Stop the stack with `docker compose down` (add `-v` to also delete the Postgres
-volume and start fresh).
-
-## Running locally (dev mode, without Docker)
+## Running in dev mode
 
 **Backend:**
 
@@ -60,8 +98,7 @@ volume and start fresh).
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # then edit DATABASE_URL / ANTHROPIC_API_KEY as needed
-docker compose up -d   # starts just Postgres, if you don't have it running locally
+cp .env.example .env
 alembic upgrade head
 python scripts/seed_db.py   # optional: loads sample data
 uvicorn app.main:app --reload --port 8000
@@ -78,19 +115,19 @@ npm run dev
 ```
 
 Vite proxies `/api` to `http://localhost:8000` in dev (see `vite.config.ts`),
-so the frontend expects the backend to already be running on port 8000.
+so the frontend expects the backend to already be running on port 8000. Visit
+`http://localhost:5173`.
 
 ## Environment variables
 
 | Variable | Where | Purpose |
 |---|---|---|
-| `DATABASE_URL` | backend | Postgres connection string |
+| `DATABASE_URL` | backend | Defaults to `sqlite:///./perftracker.db`; set to a Postgres URL to use Postgres instead |
 | `ANTHROPIC_API_KEY` | backend | Required for the AI task-breakdown feature |
 | `ANTHROPIC_MODEL` | backend | Defaults to `claude-sonnet-5` |
-| `CORS_ORIGINS` | backend | Comma-separated allowed origins |
-| `POSTGRES_PASSWORD` | docker-compose | Postgres password for the standalone stack |
-| `HTTP_PORT` | docker-compose | Port the frontend is exposed on (default 80) |
-| `SEED_ON_START` | docker-compose | `true` to load sample data on container start |
+| `CORS_ORIGINS` | backend | Comma-separated allowed origins (only matters if the frontend is served from a different origin than the API) |
+| `STATIC_DIR` | backend | Where the built frontend lives; defaults to `static` |
+| `POSTGRES_PASSWORD`, `HTTP_PORT`, `SEED_ON_START` | docker-compose only | See "Running via Docker" above |
 
 ## Tests
 

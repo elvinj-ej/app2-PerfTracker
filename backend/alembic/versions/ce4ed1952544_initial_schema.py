@@ -25,8 +25,8 @@ def upgrade() -> None:
     sa.Column('email', sa.String(length=255), nullable=False),
     sa.Column('title', sa.String(length=200), nullable=True),
     sa.Column('active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
     )
@@ -42,8 +42,8 @@ def upgrade() -> None:
     sa.Column('priority', sa.Enum('LOW', 'MEDIUM', 'HIGH', 'CRITICAL', name='priority'), nullable=True),
     sa.Column('complexity', sa.Enum('LOW', 'MEDIUM', 'HIGH', name='complexity'), nullable=True),
     sa.Column('status', sa.Enum('DRAFT', 'OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'ARCHIVED', name='initiative_status'), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('platform_initiative_categories',
@@ -59,7 +59,7 @@ def upgrade() -> None:
     op.create_table('ai_breakdown_requests',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('initiative_id', sa.Integer(), nullable=False),
-    sa.Column('requested_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('requested_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.Column('model_used', sa.String(length=100), nullable=False),
     sa.Column('raw_response_json', sa.Text(), nullable=False),
     sa.Column('status', sa.String(length=30), nullable=False),
@@ -69,7 +69,7 @@ def upgrade() -> None:
     op.create_table('initiative_engineers',
     sa.Column('initiative_id', sa.Integer(), nullable=False),
     sa.Column('engineer_id', sa.Integer(), nullable=False),
-    sa.Column('opted_in_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('opted_in_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['engineer_id'], ['engineers.id'], ),
     sa.ForeignKeyConstraint(['initiative_id'], ['initiatives.id'], ),
     sa.PrimaryKeyConstraint('initiative_id', 'engineer_id')
@@ -101,8 +101,8 @@ def upgrade() -> None:
     sa.Column('forecast_duration_days', sa.Numeric(precision=6, scale=2), nullable=True),
     sa.Column('status', sa.Enum('NOT_STARTED', 'IN_PROGRESS', 'BLOCKED', 'COMPLETE', name='task_status'), nullable=False),
     sa.Column('is_ai_generated', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['initiative_id'], ['initiatives.id'], ),
     sa.ForeignKeyConstraint(['owner_engineer_id'], ['engineers.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -125,8 +125,8 @@ def upgrade() -> None:
     sa.Column('fiscal_year_label', sa.String(length=10), nullable=False),
     sa.Column('hours', sa.Numeric(precision=6, scale=2), nullable=False),
     sa.Column('notes', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['engineer_id'], ['engineers.id'], ),
     sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], ),
     sa.PrimaryKeyConstraint('id'),

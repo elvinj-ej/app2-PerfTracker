@@ -8,6 +8,10 @@ backend/**/__pycache__/
 backend/*.pyc
 backend/.pytest_cache
 
+# Runtime data / build artifacts, not source
+backend/*.db
+backend/static/
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
