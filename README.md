@@ -106,6 +106,10 @@ don't overwrite those), then run `setup.bat` and restart `start.bat` yourself.
 Set `ANTHROPIC_API_KEY` in `backend/.env` if you want the AI task-breakdown
 feature; everything else works without it.
 
+Hit a snag on a Windows server specifically (npm/network errors, a blank
+page after deploying, etc.)? See **`WINDOWS_DEPLOYMENT.md`** — it covers the
+issues actually run into deploying this way and their fixes.
+
 ## Running via Docker instead
 
 If you'd rather containerize it (e.g. alongside other Dockerized services),
