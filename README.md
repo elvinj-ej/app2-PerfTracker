@@ -58,11 +58,16 @@ cd ../frontend
 npm install && npm run build
 rm -rf ../backend/static && cp -r dist ../backend/static
 cd ../backend
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uvicorn app.main:app --host 0.0.0.0 --port 5020
 ```
 
-Either way, open `http://localhost:8000` (or `http://<server-ip>:8000` from
-another machine). Everything — API and UI — is served by that one process.
+Either way, open `http://localhost:5020/PerfTracker` (or
+`http://<server-ip>:5020/PerfTracker` from another machine). Everything — API
+and UI — is served by that one process, under the `/PerfTracker` path prefix
+(so it can coexist with other internally-hosted apps on the same server using
+a `host:port/AppName` convention). Change the port via `start.bat` /
+`--port`, and the prefix via `URL_PREFIX` in `backend/.env` (empty string =
+serve at the root instead).
 
 To load sample demo data the first time, run `seed_sample_data.bat` (Windows)
 or `python scripts/seed_db.py` from an activated venv — **this wipes and
@@ -99,6 +104,12 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+```
+
+Edit `backend/.env` and set `URL_PREFIX=` (blank) — the Vite dev server below
+expects the API at the origin root, not under `/PerfTracker`.
+
+```bash
 alembic upgrade head
 python scripts/seed_db.py   # optional: loads sample data
 uvicorn app.main:app --reload --port 8000
@@ -115,8 +126,8 @@ npm run dev
 ```
 
 Vite proxies `/api` to `http://localhost:8000` in dev (see `vite.config.ts`),
-so the frontend expects the backend to already be running on port 8000. Visit
-`http://localhost:5173`.
+so the frontend expects the backend to already be running on port 8000 with
+an empty `URL_PREFIX`. Visit `http://localhost:5173`.
 
 ## Environment variables
 
@@ -127,6 +138,7 @@ so the frontend expects the backend to already be running on port 8000. Visit
 | `ANTHROPIC_MODEL` | backend | Defaults to `claude-sonnet-5` |
 | `CORS_ORIGINS` | backend | Comma-separated allowed origins (only matters if the frontend is served from a different origin than the API) |
 | `STATIC_DIR` | backend | Where the built frontend lives; defaults to `static` |
+| `URL_PREFIX` | backend | Path the app is hosted under; defaults to `/PerfTracker`. Empty = serve at root (used for dev mode and the Docker path) |
 | `POSTGRES_PASSWORD`, `HTTP_PORT`, `SEED_ON_START` | docker-compose only | See "Running via Docker" above |
 
 ## Tests

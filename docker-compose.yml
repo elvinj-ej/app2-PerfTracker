@@ -22,6 +22,11 @@ services:
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
       SEED_ON_START: ${SEED_ON_START:-false}
+      # Unprefixed here: nginx (the frontend container) serves the app at "/" and
+      # proxies /api/ straight through, unlike the standalone SQLite deployment
+      # which defaults to hosting under /PerfTracker. Keep these in sync with each
+      # other and with frontend/Dockerfile's VITE_BASE_PATH.
+      URL_PREFIX: ""
     depends_on:
       postgres:
         condition: service_healthy

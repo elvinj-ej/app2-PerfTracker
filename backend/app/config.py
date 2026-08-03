@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-5"
     cors_origins: str = "http://localhost:5173"
     static_dir: str = "static"
+    url_prefix: str = "/PerfTracker"
 
     @property
     def cors_origin_list(self) -> list[str]:

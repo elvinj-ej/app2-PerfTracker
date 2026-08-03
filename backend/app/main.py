@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
@@ -18,9 +18,9 @@ from app.routers import (
     upgrade_units,
 )
 
-app = FastAPI(title="Cloud Team Performance Tracker API")
+api_app = FastAPI(title="Cloud Team Performance Tracker API")
 
-app.add_middleware(
+api_app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
@@ -28,18 +28,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(engineers.router)
-app.include_router(platform_categories.router)
-app.include_router(kbi.router)
-app.include_router(platform_initiatives.router)
-app.include_router(recurring_ops.router)
-app.include_router(tasks.router)
-app.include_router(time_entries.router)
-app.include_router(upgrade_units.router)
-app.include_router(reports.router)
+api_app.include_router(engineers.router)
+api_app.include_router(platform_categories.router)
+api_app.include_router(kbi.router)
+api_app.include_router(platform_initiatives.router)
+api_app.include_router(recurring_ops.router)
+api_app.include_router(tasks.router)
+api_app.include_router(time_entries.router)
+api_app.include_router(upgrade_units.router)
+api_app.include_router(reports.router)
 
 
-@app.get("/api/health")
+@api_app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
@@ -52,9 +52,9 @@ _static_dir = Path(settings.static_dir)
 if _static_dir.is_dir():
     assets_dir = _static_dir / "assets"
     if assets_dir.is_dir():
-        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+        api_app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-    @app.get("/{full_path:path}")
+    @api_app.get("/{full_path:path}")
     def serve_spa(full_path: str):
         if full_path.startswith("api/"):
             raise HTTPException(status_code=404)
@@ -62,3 +62,19 @@ if _static_dir.is_dir():
         if full_path and candidate.is_file():
             return FileResponse(candidate)
         return FileResponse(_static_dir / "index.html")
+
+
+# When URL_PREFIX is set (e.g. "/PerfTracker", to host this app at
+# http://host:port/PerfTracker alongside other internally-hosted apps on the same
+# server), the whole app above is mounted as a sub-application under that prefix.
+# Leave URL_PREFIX empty to serve at the root instead.
+_prefix = settings.url_prefix.rstrip("/")
+if _prefix:
+    app = FastAPI(title="Cloud Team Performance Tracker")
+    app.mount(_prefix, api_app)
+
+    @app.get("/")
+    def redirect_to_app() -> RedirectResponse:
+        return RedirectResponse(url=f"{_prefix}/")
+else:
+    app = api_app
