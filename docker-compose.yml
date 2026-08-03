@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: perftracker
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-perftracker}
+      POSTGRES_DB: perftracker
+    volumes:
+      - perftracker_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U perftracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://perftracker:${POSTGRES_PASSWORD:-perftracker}@postgres:5432/perftracker
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      SEED_ON_START: ${SEED_ON_START:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  perftracker_pgdata:

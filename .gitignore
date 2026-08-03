@@ -1,0 +1,15 @@
+.env
+**/.env
+
+# Python
+backend/.venv
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.pytest_cache
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
