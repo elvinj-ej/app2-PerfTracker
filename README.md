@@ -39,7 +39,14 @@ completion %, timeline health, and hours-logged charts.
 Requires **Python 3.11+** and, for the one-time frontend build step, **Node.js**
 (Node isn't needed afterward to *run* the app — only Python is).
 
-Copy this whole folder to the server, then:
+Get the code onto the server with `git clone` rather than a downloaded ZIP if
+you can — it makes future updates a one-command `git pull` instead of
+re-downloading and re-copying files by hand:
+
+```bat
+git clone -b claude/cloud-team-perf-review-app-e8eaa0 https://github.com/elvinj-ej/app2-perftracker.git C:\Apps\PerfTracker
+cd C:\Apps\PerfTracker
+```
 
 **Windows:**
 ```bat
@@ -77,6 +84,24 @@ To keep it running after you close the terminal / across reboots, wrap
 `start.bat` (or the `uvicorn` command) in a Windows Scheduled Task ("run
 whether user is logged on or not", trigger "at startup") or a Linux `systemd`
 service — ask if you want one written out for your exact setup.
+
+### Updating after a code change
+
+You don't need to redo the whole setup - only `setup.bat` picks up whatever
+actually changed (new dependencies, a new database migration, a rebuilt
+frontend), and it's safe to re-run any time. If the code came in via
+`git clone`, `update.bat` does the whole cycle in one step: `git pull`, then
+`setup.bat`, then it stops whatever's currently running on port 5020 and
+restarts it in a new window.
+
+```bat
+update.bat
+```
+
+If you downloaded a ZIP instead of using `git clone`, there's no repo to pull
+from - re-download the latest ZIP, extract it, copy the files over the
+folder (keep your existing `backend\.env` and `backend\perftracker.db` -
+don't overwrite those), then run `setup.bat` and restart `start.bat` yourself.
 
 Set `ANTHROPIC_API_KEY` in `backend/.env` if you want the AI task-breakdown
 feature; everything else works without it.
