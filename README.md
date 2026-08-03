@@ -1,21 +1,129 @@
 # Cloud Team Performance Tracker
 
 Tracks the Cloud Team's performance over a July–June fiscal year across three
-categories of work:
+categories of work — Key Business Initiatives, Platform Initiatives, and
+Recurring Operations — with per-engineer and team-wide views, an AI-assisted
+task breakdown, a monthly reporting/export workflow, and a Jira import path
+for standing up new initiatives.
 
-- **Key Business Initiatives (KBI)** — manager-curated catalog; engineers opt in,
-  own tasks, forecast vs. log actual time. An AI-generated task breakdown
-  (HLD → LLD → Solution Design Approval → Non-Prod Deployment → Prod Deployment)
-  is available per initiative and fully editable afterward.
-- **Platform Initiatives** — team improvement projects (upgrades, automation,
-  vulnerability management, etc.) with a manager-editable category list. Upgrade
-  categories track individual systems/servers, whose completion rolls up into the
-  initiative's overall completion %.
+## Features
+
+- **Key Business Initiatives (KBI)** — a manager-curated catalog (title,
+  business goal, Jira number, dates, priority, complexity). Engineers opt in
+  and own individual tasks; a KBI can have several engineers, but each task
+  has exactly one owner.
+- **Platform Initiatives** — team improvement projects against a
+  manager-editable category list (SQL/Windows/VMware/Ops Manager upgrades,
+  Improvement, Out-of-Cycle Vulnerability Management, Automation, or any
+  category a manager adds). Upgrade-type categories additionally track
+  individual systems/servers (`upgrade_units`), and completing those units
+  drives the initiative's completion % directly.
 - **Recurring Operations** — repeatable operational work (patching, password
-  resets). No forecast, just actual hours logged per occurrence.
+  resets, etc.) with a recurrence type (annual/quarterly/monthly/weekly/ad
+  hoc). No forecast is tracked, only actual hours logged per occurrence.
+- **AI-generated task breakdown** — a live Claude API call
+  (`backend/app/services/ai_breakdown.py`) turns a KBI or Platform
+  Initiative's details into a suggested task list following the team's
+  TOGAF-style lifecycle (HLD → LLD → Solution Design Approval → Non-Prod
+  Deployment → Prod Deployment), using forced tool-use so the response
+  parses directly into task rows. The engineer can then edit, reorder, add,
+  or remove tasks freely — nothing about them stays "AI-owned."
+- **Weekly time tracking** — engineers log actual hours per task per ISO
+  week; re-submitting for the same task/week updates the existing entry
+  rather than duplicating it.
+- **Engineer Dashboard** — per-engineer view of their KBIs, Platform
+  Initiatives, and Recurring Ops work, completion %/timeline health per
+  initiative, and their own task list with forecast vs. actual hours.
+- **Team Summary** — organization-wide rollup: hours logged by category and
+  by engineer (charts), plus the same completion tables across every KBI,
+  Platform Initiative, and Recurring Ops item.
+- **Monthly Report** — a month-picker view for managers showing each KBI/
+  Platform Initiative's full predefined task breakdown alongside that
+  specific calendar month's actual hours (even though tracking itself is
+  weekly), plus an **Export to Excel** button producing a two-sheet workbook
+  (task detail, and an engineer × category hours summary) covering all three
+  categories for that month.
+- **Import from Jira** — upload a Jira single-issue XML export to pre-fill a
+  new initiative; review and edit every field, choose whether it becomes a
+  KBI or a Platform Initiative, and only then create it. See
+  [Importing initiatives from Jira](#importing-initiatives-from-jira) below.
 
-Two views tie it together: a per-engineer dashboard and a team-wide summary with
-completion %, timeline health, and hours-logged charts.
+## Design
+
+### Data model
+
+Rather than three separate tables for KBI/Platform/Recurring Ops, there's a
+single `initiatives` table with a `type` discriminator column, plus 1:1
+"detail" tables for type-specific fields (`platform_initiative_details` with
+a `category_id`, `recurring_ops_details` with recurrence fields). Tasks, time
+entries, and the opt-in join table (`initiative_engineers`) all reference
+`initiatives.id` directly — one shared foreign key regardless of type — so
+reporting queries (dashboards, team summary, monthly report) never need to
+`UNION` across per-type tables. Type-specific data (a Platform Initiative's
+category, a Recurring Ops item's recurrence schedule, upgrade units) lives in
+its own table rather than bloating the shared one with mostly-null columns.
+
+Tasks always have exactly one `owner_engineer_id` (never a join table),
+matching the requirement that a task is single-owner even when its parent
+initiative has multiple engineers opted in. `time_entries` has a unique
+constraint on `(task_id, week_start_date)`, so logging hours for a week is an
+upsert, not an append.
+
+### Completion % and timeline health
+
+Implemented in `backend/app/services/completion.py`, covered by
+`backend/tests/test_completion.py`.
+
+**KBI, and Platform Initiatives without an upgrade-type category** — forecast-
+day-weighted ratio of completed tasks:
+
+```
+completion % = Σ(forecast_days of COMPLETE tasks) / Σ(forecast_days of all tasks) × 100
+```
+
+If any task is missing a forecast, this falls back to a simple count ratio
+(`# complete tasks / # total tasks`) so an initiative with incomplete
+forecasting data still gets a reasonable number instead of an error.
+
+**Platform Initiatives with an upgrade-type category** — completion is driven
+by the per-system upgrade units instead, overriding the task-based formula:
+
+```
+completion % = (# upgrade units marked COMPLETE) / (# total upgrade units) × 100
+```
+
+(Falls back to the task-based formula if no units have been added yet.)
+
+**Recurring Operations** — no completion % at all; only actual hours logged
+are reported, since there's no forecast to compare against.
+
+**Timeline health** is a separate signal from completion %, so "how much is
+done" and "are we on schedule" stay independently readable rather than being
+blended into one number:
+
+```
+expected % = (today − start_date) / (expected_delivery_date − start_date) × 100   [clamped 0–100]
+delta = completion % − expected %
+
+delta ≥ −15        → On Track
+−30 ≤ delta < −15   → At Risk
+delta < −30         → Behind
+(missing dates, or N/A for Recurring Ops)
+```
+
+### Fiscal year and monthly attribution
+
+Implemented in `backend/app/services/fiscal_year.py` as pure date math (no
+database table) — the fiscal year runs **July 1 – June 30**, labeled
+`FY25-26` for the year starting July 2025. Weeks are Monday-aligned
+(`week_start_date` is always a Monday); a `TimeEntry`'s `fiscal_year_label` is
+computed and stored at write time so reporting queries can filter directly
+without recomputing date math per row.
+
+For the Monthly Report, a week's hours are attributed entirely to the
+**calendar month containing that week's Monday** — the simplest unambiguous
+rule for a week that straddles a month boundary (e.g. a week starting July 28
+counts fully toward July, even though it runs into August).
 
 ## Architecture
 
@@ -27,12 +135,34 @@ completion %, timeline health, and hours-logged charts.
   `frontend/src/`. The production build is a handful of static files that
   FastAPI serves directly (`backend/app/main.py`) — so the whole app runs as
   **one process**, no separate frontend server needed once built.
-- **AI task breakdown**: a live call to the Claude API (`backend/app/services/ai_breakdown.py`),
-  using forced tool-use so the response parses directly into task rows.
 - **Auth**: no real authentication in v1 — a lightweight role/engineer switcher
   in the header sends `X-Actor-Role` / `X-Actor-Engineer-Id` headers, resolved by
   a single `get_current_actor()` dependency (`backend/app/core/auth_context.py`).
   Swapping in real auth later means rewriting that one function.
+- **Excel export**: `backend/app/services/excel_export.py` builds the Monthly
+  Report workbook with `openpyxl` — no pandas dependency.
+- **Hosting under a path prefix**: the whole FastAPI app is mounted as a
+  sub-application under a configurable `URL_PREFIX` (default `/PerfTracker`),
+  so it can sit at `host:port/AppName` alongside other internally-hosted
+  tools. See `backend/app/main.py`.
+
+## Importing initiatives from Jira
+
+A manager can import a Key Business Initiative or Platform Initiative from a
+Jira single-issue XML export (in Jira: open the issue → **Export** → **XML**)
+via the **Import from Jira** page. Upload the file, review the parsed fields
+(nothing is saved yet), choose whether it becomes a KBI or a Platform
+Initiative, edit anything, then create it.
+
+Only a specific, well-known set of fields is pulled out
+(`backend/app/services/jira_import.py`): the issue key, summary, description
+(HTML stripped to plain text), the "Target start"/"Target end" custom fields
+for the initiative's dates, "Purpose" or "Opportunity" for the business goal,
+and the priority (mapped from Jira's Must/Should/Could/Won't Have scale to
+Low/Medium/High/Critical). Linked issues (Blocks/Relates/etc.) are counted but
+not imported — there's no equivalent concept in this app. Uploaded XML is
+parsed with `defusedxml` rather than the stdlib parser, since this file comes
+from the user rather than from a trusted source.
 
 ## Running standalone on a server (no Docker) — recommended
 
@@ -122,7 +252,8 @@ docker compose up -d --build
 ```
 
 See `docker-compose.yml` and each service's `Dockerfile` for details. This
-path uses Postgres rather than SQLite.
+path uses Postgres rather than SQLite, and serves at the root (`URL_PREFIX`
+empty) rather than under `/PerfTracker`.
 
 ## Running in dev mode
 
@@ -179,30 +310,7 @@ PYTHONPATH=. pytest
 ```
 
 Covers fiscal-year boundary logic, the completion-% engine (including the
-upgrade-unit override), the AI-breakdown parsing/persistence (against a mocked
-Claude client — no real API calls or cost in the test suite), and the Jira XML
-import parser (including a check that it rejects an XXE payload).
-
-## Importing initiatives from Jira
-
-A manager can import a Key Business Initiative or Platform Initiative from a
-Jira single-issue XML export (in Jira: open the issue → **Export** → **XML**)
-via the **Import from Jira** page. Upload the file, review the parsed fields
-(nothing is saved yet), choose whether it becomes a KBI or a Platform
-Initiative, edit anything, then create it.
-
-Only a specific, well-known set of fields is pulled out
-(`backend/app/services/jira_import.py`): the issue key, summary, description
-(HTML stripped to plain text), the "Target start"/"Target end" custom fields
-for the initiative's dates, "Purpose" or "Opportunity" for the business goal,
-and the priority (mapped from Jira's Must/Should/Could/Won't Have scale to
-Low/Medium/High/Critical). Linked issues (Blocks/Relates/etc.) are counted but
-not imported — there's no equivalent concept in this app. Uploaded XML is
-parsed with `defusedxml` rather than the stdlib parser, since this file comes
-from the user rather than from a trusted source.
-
-## Fiscal year
-
-The fiscal year runs July 1 – June 30 (e.g. `FY25-26` = 2025-07-01 through
-2026-06-30). This is pure date math (`backend/app/services/fiscal_year.py`), not
-a database table.
+upgrade-unit override and the timeline-health thresholds), the AI-breakdown
+parsing/persistence (against a mocked Claude client — no real API calls or
+cost in the test suite), and the Jira XML import parser (including a check
+that it rejects an XXE payload).
