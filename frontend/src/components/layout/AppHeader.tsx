@@ -7,6 +7,7 @@ import { useActor } from '../../context/ActorContext'
 const NAV_LINKS = [
   { to: '/', label: 'My Dashboard' },
   { to: '/team', label: 'Team Summary' },
+  { to: '/reports/monthly', label: 'Monthly Report' },
   { to: '/kbis', label: 'Key Business Initiatives' },
   { to: '/platform-initiatives', label: 'Platform Initiatives' },
   { to: '/recurring-ops', label: 'Recurring Operations' },

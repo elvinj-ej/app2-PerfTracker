@@ -67,3 +67,34 @@ class TeamSummary(BaseModel):
     recurring_ops: list[InitiativeSummary]
     hours_by_category: list[CategoryHours]
     hours_by_engineer: list[EngineerHoursBreakdown]
+
+
+class MonthlyTaskDetail(BaseModel):
+    id: int
+    initiative_id: int
+    title: str
+    stage: TaskStage | None
+    owner_engineer_id: int
+    owner_engineer_name: str
+    forecast_duration_days: float | None
+    status: TaskStatus
+    hours_this_month: float
+
+
+class MonthlyInitiativeReport(BaseModel):
+    id: int
+    type: InitiativeType
+    title: str
+    category_name: str | None = None
+    status: str
+    completion_pct: float | None
+    expected_delivery_date: date | None = None
+    tasks: list[MonthlyTaskDetail]
+    total_hours_this_month: float
+
+
+class MonthlyReport(BaseModel):
+    month: str
+    kbis: list[MonthlyInitiativeReport]
+    platform_initiatives: list[MonthlyInitiativeReport]
+    recurring_ops: list[MonthlyInitiativeReport]

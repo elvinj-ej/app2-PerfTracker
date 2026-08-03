@@ -1,6 +1,10 @@
-"""Builds the aggregate views behind the Engineer Dashboard (and, in M6, the Team
-Summary). Wraps services/completion.py with the DB queries needed to feed it real data.
+"""Builds the aggregate views behind the Engineer Dashboard, Team Summary, and
+Monthly Report. Wraps services/completion.py with the DB queries needed to feed it
+real data.
 """
+
+from calendar import monthrange
+from datetime import date
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
@@ -12,11 +16,20 @@ from app.schemas.reporting import (
     EngineerDashboard,
     EngineerHoursBreakdown,
     InitiativeSummary,
+    MonthlyInitiativeReport,
+    MonthlyReport,
+    MonthlyTaskDetail,
     TaskSummary,
     TeamSummary,
     WeeklyHours,
 )
-from app.services.completion import TaskLike, TimelineHealth, UpgradeUnitLike, compute_initiative_completion
+from app.services.completion import (
+    CompletionResult,
+    TaskLike,
+    TimelineHealth,
+    UpgradeUnitLike,
+    compute_initiative_completion,
+)
 
 
 def _task_hours_map(db: Session, task_ids: list[int]) -> dict[int, float]:
@@ -31,38 +44,47 @@ def _task_hours_map(db: Session, task_ids: list[int]) -> dict[int, float]:
     return {task_id: float(total) for task_id, total in rows}
 
 
-def build_initiative_summary(initiative: Initiative, hours_by_task: dict[int, float]) -> InitiativeSummary:
-    tasks = initiative.tasks
+def _platform_category_name(initiative: Initiative) -> str | None:
+    if initiative.type == InitiativeType.PLATFORM and initiative.platform_detail:
+        return initiative.platform_detail.category.name
+    return None
+
+
+def _compute_completion(initiative: Initiative) -> CompletionResult:
     task_likes = [
         TaskLike(
             status=t.status,
             forecast_duration_days=float(t.forecast_duration_days) if t.forecast_duration_days is not None else None,
         )
-        for t in tasks
+        for t in initiative.tasks
     ]
 
     upgrade_units = None
-    category_name = None
-    if initiative.type == InitiativeType.PLATFORM and initiative.platform_detail:
-        category_name = initiative.platform_detail.category.name
-        if initiative.platform_detail.category.is_upgrade_type:
-            upgrade_units = [UpgradeUnitLike(status=u.status) for u in initiative.upgrade_units]
+    if (
+        initiative.type == InitiativeType.PLATFORM
+        and initiative.platform_detail
+        and initiative.platform_detail.category.is_upgrade_type
+    ):
+        upgrade_units = [UpgradeUnitLike(status=u.status) for u in initiative.upgrade_units]
 
-    result = compute_initiative_completion(
+    return compute_initiative_completion(
         tasks=task_likes,
         start_date=initiative.start_date,
         expected_delivery_date=initiative.expected_delivery_date,
         upgrade_units=upgrade_units,
     )
 
-    total_hours = sum(hours_by_task.get(t.id, 0.0) for t in tasks)
+
+def build_initiative_summary(initiative: Initiative, hours_by_task: dict[int, float]) -> InitiativeSummary:
+    result = _compute_completion(initiative)
+    total_hours = sum(hours_by_task.get(t.id, 0.0) for t in initiative.tasks)
 
     return InitiativeSummary(
         id=initiative.id,
         type=initiative.type,
         title=initiative.title,
         status=initiative.status.value,
-        category_name=category_name,
+        category_name=_platform_category_name(initiative),
         start_date=initiative.start_date,
         expected_delivery_date=initiative.expected_delivery_date,
         completion_pct=result.completion_pct,
@@ -228,4 +250,100 @@ def build_team_summary(db: Session) -> TeamSummary:
         recurring_ops=recurring_ops,
         hours_by_category=hours_by_category,
         hours_by_engineer=sorted(breakdown_by_engineer.values(), key=lambda b: b.engineer_name),
+    )
+
+
+def month_bounds(month: str) -> tuple[date, date]:
+    """'2026-08' -> (2026-08-01, 2026-08-31). A week's hours are attributed to the
+    calendar month containing its Monday (week_start_date), which is the simplest
+    unambiguous rule for weeks that straddle a month boundary.
+    """
+    year_str, month_str = month.split("-")
+    year, mon = int(year_str), int(month_str)
+    first_day = date(year, mon, 1)
+    last_day = date(year, mon, monthrange(year, mon)[1])
+    return first_day, last_day
+
+
+def get_available_months(db: Session) -> list[str]:
+    """Distinct months (most recent first) that have any logged time, for driving the
+    Monthly Report's month dropdown. Falls back to the current month if nothing has
+    been logged yet, so the dropdown is never empty.
+    """
+    rows = db.query(TimeEntry.week_start_date).distinct().all()
+    months = sorted({d.strftime("%Y-%m") for (d,) in rows}, reverse=True)
+    return months or [date.today().strftime("%Y-%m")]
+
+
+def build_monthly_report(db: Session, month: str) -> MonthlyReport:
+    first_day, last_day = month_bounds(month)
+
+    initiatives = (
+        db.query(Initiative)
+        .options(
+            selectinload(Initiative.tasks).selectinload(Task.owner),
+            selectinload(Initiative.upgrade_units),
+            selectinload(Initiative.platform_detail).selectinload(PlatformInitiativeDetail.category),
+            selectinload(Initiative.recurring_ops_detail),
+        )
+        .all()
+    )
+
+    all_task_ids = [t.id for i in initiatives for t in i.tasks]
+    monthly_hours_by_task: dict[int, float] = {}
+    if all_task_ids:
+        rows = (
+            db.query(TimeEntry.task_id, func.sum(TimeEntry.hours))
+            .filter(
+                TimeEntry.task_id.in_(all_task_ids),
+                TimeEntry.week_start_date >= first_day,
+                TimeEntry.week_start_date <= last_day,
+            )
+            .group_by(TimeEntry.task_id)
+            .all()
+        )
+        monthly_hours_by_task = {task_id: float(total) for task_id, total in rows}
+
+    def build_task_detail(task: Task) -> MonthlyTaskDetail:
+        return MonthlyTaskDetail(
+            id=task.id,
+            initiative_id=task.initiative_id,
+            title=task.title,
+            stage=task.stage,
+            owner_engineer_id=task.owner_engineer_id,
+            owner_engineer_name=task.owner.name,
+            forecast_duration_days=(
+                float(task.forecast_duration_days) if task.forecast_duration_days is not None else None
+            ),
+            status=task.status,
+            hours_this_month=monthly_hours_by_task.get(task.id, 0.0),
+        )
+
+    def build_initiative_report(initiative: Initiative, *, with_completion: bool) -> MonthlyInitiativeReport:
+        tasks = [build_task_detail(t) for t in sorted(initiative.tasks, key=lambda t: t.sequence_order)]
+        completion_pct = _compute_completion(initiative).completion_pct if with_completion else None
+        return MonthlyInitiativeReport(
+            id=initiative.id,
+            type=initiative.type,
+            title=initiative.title,
+            category_name=_platform_category_name(initiative),
+            status=initiative.status.value,
+            completion_pct=completion_pct,
+            expected_delivery_date=initiative.expected_delivery_date,
+            tasks=tasks,
+            total_hours_this_month=sum(t.hours_this_month for t in tasks),
+        )
+
+    kbis = [build_initiative_report(i, with_completion=True) for i in initiatives if i.type == InitiativeType.KBI]
+    platform_initiatives = [
+        build_initiative_report(i, with_completion=True) for i in initiatives if i.type == InitiativeType.PLATFORM
+    ]
+    recurring_ops = [
+        build_initiative_report(i, with_completion=False)
+        for i in initiatives
+        if i.type == InitiativeType.RECURRING_OPS
+    ]
+
+    return MonthlyReport(
+        month=month, kbis=kbis, platform_initiatives=platform_initiatives, recurring_ops=recurring_ops
     )

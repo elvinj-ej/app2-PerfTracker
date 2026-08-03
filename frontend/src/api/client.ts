@@ -56,3 +56,25 @@ export async function apiFetch<T>(path: string, actor: Actor, options: RequestIn
 
   return (await response.json()) as T
 }
+
+/** Fetches a binary file (e.g. an Excel export) and triggers a browser download. Goes
+ * through fetch (rather than a plain <a href>) so the required actor headers are sent -
+ * a bare link click wouldn't carry them, and the API would reject the request. */
+export async function downloadFile(path: string, actor: Actor, filename: string): Promise<void> {
+  const response = await fetch(resolveUrl(path), { headers: actorHeaders(actor) })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new ApiError(response.status, extractErrorMessage(body) || response.statusText)
+  }
+
+  const blob = await response.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(objectUrl)
+}

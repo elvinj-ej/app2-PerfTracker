@@ -165,3 +165,34 @@ export interface TeamSummary {
   hours_by_category: CategoryHours[]
   hours_by_engineer: EngineerHoursBreakdown[]
 }
+
+export interface MonthlyTaskDetail {
+  id: number
+  initiative_id: number
+  title: string
+  stage: TaskStage | null
+  owner_engineer_id: number
+  owner_engineer_name: string
+  forecast_duration_days: number | null
+  status: TaskStatus
+  hours_this_month: number
+}
+
+export interface MonthlyInitiativeReport {
+  id: number
+  type: InitiativeType
+  title: string
+  category_name: string | null
+  status: string
+  completion_pct: number | null
+  expected_delivery_date: string | null
+  tasks: MonthlyTaskDetail[]
+  total_hours_this_month: number
+}
+
+export interface MonthlyReport {
+  month: string
+  kbis: MonthlyInitiativeReport[]
+  platform_initiatives: MonthlyInitiativeReport[]
+  recurring_ops: MonthlyInitiativeReport[]
+}

@@ -416,3 +416,23 @@ select, input {
   margin: 0;
   color: var(--text);
 }
+
+.section-heading {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 28px 0 12px;
+}
+
+.section-heading:first-of-type {
+  margin-top: 0;
+}
+
+.monthly-initiative-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}

@@ -5,6 +5,7 @@ import { ActorProvider } from './context/ActorContext'
 import { EngineerDashboardPage } from './pages/EngineerDashboardPage'
 import { KbiCatalogPage } from './pages/KbiCatalogPage'
 import { KbiDetailPage } from './pages/KbiDetailPage'
+import { MonthlyReportPage } from './pages/MonthlyReportPage'
 import { PlatformInitiativeCatalogPage } from './pages/PlatformInitiativeCatalogPage'
 import { PlatformInitiativeDetailPage } from './pages/PlatformInitiativeDetailPage'
 import { RecurringOpsCatalogPage } from './pages/RecurringOpsCatalogPage'
@@ -24,6 +25,7 @@ function App() {
             <Routes>
               <Route path="/" element={<EngineerDashboardPage />} />
               <Route path="/team" element={<TeamSummaryPage />} />
+              <Route path="/reports/monthly" element={<MonthlyReportPage />} />
               <Route path="/kbis" element={<KbiCatalogPage />} />
               <Route path="/kbis/:id" element={<KbiDetailPage />} />
               <Route path="/platform-initiatives" element={<PlatformInitiativeCatalogPage />} />
