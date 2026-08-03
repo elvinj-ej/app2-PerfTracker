@@ -1,3 +1,4 @@
+import mimetypes
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -6,6 +7,16 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
+
+# Some Windows machines have a corrupted registry mapping for these extensions (often
+# ".js" -> "text/plain"), which Python's mimetypes module picks up and which then makes
+# browsers refuse to execute the built JS as an ES module ("Failed to load module
+# script: Expected a JavaScript module script but the server responded with a MIME
+# type of ..."), rendering a blank page even though every request 200s. Registering
+# these explicitly overrides whatever the OS supplied, on every platform.
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("image/svg+xml", ".svg")
 from app.routers import (
     engineers,
     initiative_import,
