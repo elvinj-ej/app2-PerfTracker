@@ -14,6 +14,8 @@ const NAV_LINKS = [
   { to: '/log-time', label: 'Log Time' },
 ]
 
+const MANAGER_ONLY_NAV_LINKS = [{ to: '/import', label: 'Import from Jira' }]
+
 export function AppHeader() {
   const { actor, setManager, setEngineer } = useActor()
   const { data: engineers } = useQuery({
@@ -52,7 +54,7 @@ export function AppHeader() {
         </label>
       </div>
       <nav className="nav-tabs">
-        {NAV_LINKS.map((link) => (
+        {[...NAV_LINKS, ...(actor.role === 'manager' ? MANAGER_ONLY_NAV_LINKS : [])].map((link) => (
           <NavLink key={link.to} to={link.to} end={link.to === '/'} className={({ isActive }) => (isActive ? 'nav-tab nav-tab-active' : 'nav-tab')}>
             {link.label}
           </NavLink>

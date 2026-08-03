@@ -196,3 +196,15 @@ export interface MonthlyReport {
   platform_initiatives: MonthlyInitiativeReport[]
   recurring_ops: MonthlyInitiativeReport[]
 }
+
+export interface JiraImportPreview {
+  jira_number: string | null
+  title: string
+  description: string | null
+  business_goal: string | null
+  start_date: string | null
+  expected_delivery_date: string | null
+  priority: string | null
+  suggested_status: string
+  skipped_linked_issues: number
+}

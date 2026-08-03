@@ -175,8 +175,27 @@ PYTHONPATH=. pytest
 ```
 
 Covers fiscal-year boundary logic, the completion-% engine (including the
-upgrade-unit override), and the AI-breakdown parsing/persistence (against a
-mocked Claude client — no real API calls or cost in the test suite).
+upgrade-unit override), the AI-breakdown parsing/persistence (against a mocked
+Claude client — no real API calls or cost in the test suite), and the Jira XML
+import parser (including a check that it rejects an XXE payload).
+
+## Importing initiatives from Jira
+
+A manager can import a Key Business Initiative or Platform Initiative from a
+Jira single-issue XML export (in Jira: open the issue → **Export** → **XML**)
+via the **Import from Jira** page. Upload the file, review the parsed fields
+(nothing is saved yet), choose whether it becomes a KBI or a Platform
+Initiative, edit anything, then create it.
+
+Only a specific, well-known set of fields is pulled out
+(`backend/app/services/jira_import.py`): the issue key, summary, description
+(HTML stripped to plain text), the "Target start"/"Target end" custom fields
+for the initiative's dates, "Purpose" or "Opportunity" for the business goal,
+and the priority (mapped from Jira's Must/Should/Could/Won't Have scale to
+Low/Medium/High/Critical). Linked issues (Blocks/Relates/etc.) are counted but
+not imported — there's no equivalent concept in this app. Uploaded XML is
+parsed with `defusedxml` rather than the stdlib parser, since this file comes
+from the user rather than from a trusted source.
 
 ## Fiscal year
 

@@ -78,3 +78,20 @@ export async function downloadFile(path: string, actor: Actor, filename: string)
   link.remove()
   URL.revokeObjectURL(objectUrl)
 }
+
+/** Posts a multipart file upload. No Content-Type header is set - the browser fills in
+ * the multipart boundary itself, which it can only do if we don't override it. */
+export async function apiFetchMultipart<T>(path: string, actor: Actor, formData: FormData): Promise<T> {
+  const response = await fetch(resolveUrl(path), {
+    method: 'POST',
+    headers: actorHeaders(actor),
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new ApiError(response.status, extractErrorMessage(body) || response.statusText)
+  }
+
+  return (await response.json()) as T
+}

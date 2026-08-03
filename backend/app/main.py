@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.routers import (
     engineers,
+    initiative_import,
     kbi,
     platform_categories,
     platform_initiatives,
@@ -29,6 +30,7 @@ api_app.add_middleware(
 )
 
 api_app.include_router(engineers.router)
+api_app.include_router(initiative_import.router)
 api_app.include_router(platform_categories.router)
 api_app.include_router(kbi.router)
 api_app.include_router(platform_initiatives.router)

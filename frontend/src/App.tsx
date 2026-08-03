@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppHeader } from './components/layout/AppHeader'
 import { ActorProvider } from './context/ActorContext'
 import { EngineerDashboardPage } from './pages/EngineerDashboardPage'
+import { ImportInitiativePage } from './pages/ImportInitiativePage'
 import { KbiCatalogPage } from './pages/KbiCatalogPage'
 import { KbiDetailPage } from './pages/KbiDetailPage'
 import { MonthlyReportPage } from './pages/MonthlyReportPage'
@@ -33,6 +34,7 @@ function App() {
               <Route path="/recurring-ops" element={<RecurringOpsCatalogPage />} />
               <Route path="/recurring-ops/:id" element={<RecurringOpsDetailPage />} />
               <Route path="/log-time" element={<WeeklyTimeEntryPage />} />
+              <Route path="/import" element={<ImportInitiativePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
