@@ -33,6 +33,8 @@ export function EditableTaskList({
   const [newTitle, setNewTitle] = useState('')
   const [newOwnerId, setNewOwnerId] = useState('')
   const [newForecast, setNewForecast] = useState('')
+  const [newStartDate, setNewStartDate] = useState('')
+  const [newDeliveryDate, setNewDeliveryDate] = useState('')
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: invalidateKey })
 
@@ -52,6 +54,8 @@ export function EditableTaskList({
       setNewTitle('')
       setNewOwnerId('')
       setNewForecast('')
+      setNewStartDate('')
+      setNewDeliveryDate('')
     },
   })
   const reorderMutation = useMutation({
@@ -76,19 +80,28 @@ export function EditableTaskList({
   return (
     <section className="card">
       <div className="card-header-row">
-        <h2>Tasks</h2>
+        <h2>Outcomes</h2>
         {onGenerateBreakdown && (
           <button className="btn btn-secondary" onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
             {generateMutation.isPending ? 'Generating…' : 'Generate AI Breakdown'}
           </button>
         )}
       </div>
+      <p className="text-muted">
+        An Outcome answers the initiative's Ask. Delivery must land within two weeks of the start
+        date, and both dates must fall on a Wednesday — split larger work into multiple Outcomes.
+      </p>
       {generateMutation.isError && (
         <p className="text-error">{(generateMutation.error as Error).message}</p>
       )}
+      {(updateMutation.isError || createMutation.isError) && (
+        <p className="text-error">
+          {((updateMutation.error ?? createMutation.error) as Error).message}
+        </p>
+      )}
 
       {sorted.length === 0 ? (
-        <p className="text-muted">No tasks yet.</p>
+        <p className="text-muted">No outcomes yet.</p>
       ) : (
         <div className="table-scroll">
           <table>
@@ -99,6 +112,8 @@ export function EditableTaskList({
                 <th>Stage</th>
                 <th>Owner</th>
                 {showForecast && <th>Forecast (days)</th>}
+                <th>Start Date</th>
+                <th>Delivery Date</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -147,6 +162,26 @@ export function EditableTaskList({
                     </td>
                   )}
                   <td>
+                    <input
+                      type="date"
+                      defaultValue={task.start_date ?? ''}
+                      onBlur={(e) => {
+                        const value = e.target.value === '' ? null : e.target.value
+                        updateMutation.mutate({ taskId: task.id, payload: { start_date: value } })
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="date"
+                      defaultValue={task.delivery_date ?? ''}
+                      onBlur={(e) => {
+                        const value = e.target.value === '' ? null : e.target.value
+                        updateMutation.mutate({ taskId: task.id, payload: { delivery_date: value } })
+                      }}
+                    />
+                  </td>
+                  <td>
                     <select
                       value={task.status}
                       onChange={(e) => updateMutation.mutate({ taskId: task.id, payload: { status: e.target.value } })}
@@ -171,7 +206,7 @@ export function EditableTaskList({
       )}
 
       <div className="add-task-form">
-        <input placeholder="New task title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+        <input placeholder="New outcome title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
         <select value={newOwnerId} onChange={(e) => setNewOwnerId(e.target.value)}>
           <option value="">Owner…</option>
           {engineers.map((eng) => (
@@ -189,6 +224,14 @@ export function EditableTaskList({
             onChange={(e) => setNewForecast(e.target.value)}
           />
         )}
+        <label>
+          Start
+          <input type="date" value={newStartDate} onChange={(e) => setNewStartDate(e.target.value)} />
+        </label>
+        <label>
+          Delivery
+          <input type="date" value={newDeliveryDate} onChange={(e) => setNewDeliveryDate(e.target.value)} />
+        </label>
         <button
           className="btn btn-primary"
           disabled={!newTitle || !newOwnerId}
@@ -197,10 +240,12 @@ export function EditableTaskList({
               title: newTitle,
               owner_engineer_id: Number(newOwnerId),
               forecast_duration_days: newForecast ? Number(newForecast) : null,
+              start_date: newStartDate || null,
+              delivery_date: newDeliveryDate || null,
             })
           }
         >
-          Add Task
+          Add Outcome
         </button>
       </div>
     </section>

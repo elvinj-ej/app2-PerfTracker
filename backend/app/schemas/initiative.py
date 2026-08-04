@@ -10,6 +10,7 @@ from app.models.enums import (
     RecurrenceType,
 )
 from app.schemas.platform_category import PlatformInitiativeCategoryRead
+from app.schemas.recurring_ops_category import RecurringOpsCategoryRead
 
 
 class InitiativeBase(BaseModel):
@@ -40,11 +41,11 @@ class InitiativeUpdateBase(BaseModel):
 
 
 class KbiCreate(InitiativeBase):
-    pass
+    ask: str | None = None
 
 
 class KbiUpdate(InitiativeUpdateBase):
-    pass
+    ask: str | None = None
 
 
 class KbiRead(InitiativeBase):
@@ -52,6 +53,7 @@ class KbiRead(InitiativeBase):
 
     id: int
     type: InitiativeType
+    ask: str | None = None
     engineer_ids: list[int] = []
 
 
@@ -82,6 +84,7 @@ class RecurringOpsBase(BaseModel):
     title: str
     description: str | None = None
     status: InitiativeStatus = InitiativeStatus.OPEN
+    category_id: int
     recurrence_type: RecurrenceType
     recurrence_interval: int = 1
     anchor_month: int | None = None
@@ -96,6 +99,7 @@ class RecurringOpsUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     status: InitiativeStatus | None = None
+    category_id: int | None = None
     recurrence_type: RecurrenceType | None = None
     recurrence_interval: int | None = None
     anchor_month: int | None = None
@@ -110,6 +114,7 @@ class RecurringOpsRead(BaseModel):
     title: str
     description: str | None
     status: InitiativeStatus
+    category: RecurringOpsCategoryRead
     recurrence_type: RecurrenceType
     recurrence_interval: int
     anchor_month: int | None

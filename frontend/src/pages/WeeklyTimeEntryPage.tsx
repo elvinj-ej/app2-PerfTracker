@@ -95,15 +95,15 @@ export function WeeklyTimeEntryPage() {
       </div>
 
       <section className="card">
-        <h2>My Tasks</h2>
+        <h2>My Outcomes</h2>
         {tasks.length === 0 ? (
-          <p className="text-muted">No tasks assigned.</p>
+          <p className="text-muted">No outcomes assigned.</p>
         ) : (
           <div className="table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>Task</th>
+                  <th>Outcome</th>
                   <th>Initiative</th>
                   <th>Hours this week</th>
                   <th></th>

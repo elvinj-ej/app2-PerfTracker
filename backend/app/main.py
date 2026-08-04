@@ -24,6 +24,7 @@ from app.routers import (
     platform_categories,
     platform_initiatives,
     recurring_ops,
+    recurring_ops_categories,
     reports,
     tasks,
     time_entries,
@@ -43,6 +44,7 @@ api_app.add_middleware(
 api_app.include_router(engineers.router)
 api_app.include_router(initiative_import.router)
 api_app.include_router(platform_categories.router)
+api_app.include_router(recurring_ops_categories.router)
 api_app.include_router(kbi.router)
 api_app.include_router(platform_initiatives.router)
 api_app.include_router(recurring_ops.router)

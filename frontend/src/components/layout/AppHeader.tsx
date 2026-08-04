@@ -10,7 +10,7 @@ const NAV_LINKS = [
   { to: '/reports/monthly', label: 'Monthly Report' },
   { to: '/kbis', label: 'Key Business Initiatives' },
   { to: '/platform-initiatives', label: 'Platform Initiatives' },
-  { to: '/recurring-ops', label: 'Recurring Operations' },
+  { to: '/recurring-ops', label: 'Run Operations' },
   { to: '/log-time', label: 'Log Time' },
 ]
 

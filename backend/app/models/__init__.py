@@ -4,6 +4,7 @@ from app.models.initiative import (
     Initiative,
     PlatformInitiativeCategory,
     PlatformInitiativeDetail,
+    RecurringOpsCategory,
     RecurringOpsDetail,
 )
 from app.models.initiative_engineer import InitiativeEngineer
@@ -18,6 +19,7 @@ __all__ = [
     "InitiativeEngineer",
     "PlatformInitiativeCategory",
     "PlatformInitiativeDetail",
+    "RecurringOpsCategory",
     "RecurringOpsDetail",
     "Task",
     "TimeEntry",

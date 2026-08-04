@@ -10,6 +10,7 @@ function NewKbiForm() {
   const queryClient = useQueryClient()
   const [title, setTitle] = useState('')
   const [businessGoal, setBusinessGoal] = useState('')
+  const [ask, setAsk] = useState('')
   const [jira, setJira] = useState('')
   const [startDate, setStartDate] = useState('')
   const [deliveryDate, setDeliveryDate] = useState('')
@@ -21,6 +22,7 @@ function NewKbiForm() {
       createKbi(actor, {
         title,
         business_goal: businessGoal || null,
+        ask: ask || null,
         jira_number: jira || null,
         start_date: startDate || null,
         expected_delivery_date: deliveryDate || null,
@@ -32,6 +34,7 @@ function NewKbiForm() {
       queryClient.invalidateQueries({ queryKey: ['kbis'] })
       setTitle('')
       setBusinessGoal('')
+      setAsk('')
       setJira('')
       setStartDate('')
       setDeliveryDate('')
@@ -49,6 +52,9 @@ function NewKbiForm() {
         </FormField>
         <FormField label="Business Goal" hint="The outcome this needs to achieve">
           <input placeholder="e.g. Reduce hosting costs" value={businessGoal} onChange={(e) => setBusinessGoal(e.target.value)} />
+        </FormField>
+        <FormField label="The Ask" hint="What the Cloud Team needs to provide">
+          <input placeholder="e.g. Migrate the portal backend with zero downtime" value={ask} onChange={(e) => setAsk(e.target.value)} />
         </FormField>
         <FormField label="Jira Number" hint="Optional, e.g. ME-1">
           <input placeholder="ME-1" value={jira} onChange={(e) => setJira(e.target.value)} />

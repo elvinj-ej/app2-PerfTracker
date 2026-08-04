@@ -7,6 +7,7 @@ ANTHROPIC_API_KEY to be set; the model is configurable via ANTHROPIC_MODEL.
 
 import json
 from dataclasses import dataclass
+from datetime import date
 
 import anthropic
 from sqlalchemy.orm import Session
@@ -14,10 +15,13 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import AiBreakdownRequest, Initiative, Task
 from app.models.enums import TaskStage
+from app.services.outcome_dates import sequential_wednesday_windows
 
 SYSTEM_PROMPT = """You are assisting a Cloud/Hosting & Platform engineering team in breaking \
-down a work initiative into an execution task list. This team follows a TOGAF-influenced \
-systems design lifecycle for KBI and Platform work, with these standard stages, in order:
+down a work initiative into a list of Outcomes - the concrete, ownable pieces of work that \
+answer the initiative's "Ask" (what the Cloud Team needs to provide). This team follows a \
+TOGAF-influenced systems design lifecycle for KBI and Platform work, with these standard \
+stages, in order:
 
 1. HLD - High-Level Design
 2. LLD - Low-Level Design
@@ -25,11 +29,15 @@ systems design lifecycle for KBI and Platform work, with these standard stages, 
 4. NON_PROD_DEPLOYMENT - Deployment and validation in non-production
 5. PROD_DEPLOYMENT - Production deployment
 
-Given the initiative's details, propose a concrete, tailored task breakdown following \
-this lifecycle. Not every stage necessarily needs multiple tasks, but the sequence should \
-generally follow this order. Each task needs a short title, a one-to-two sentence \
-description specific to this initiative (not generic boilerplate), the stage it belongs to, \
-and a rough forecast in engineer-days. Use the record_task_breakdown tool to return your answer."""
+Given the initiative's details (especially the Ask, if provided), propose a concrete, \
+tailored breakdown of Outcomes following this lifecycle. Not every stage necessarily needs \
+multiple Outcomes, but the sequence should generally follow this order. Each Outcome must be \
+scoped to fit within a two-week delivery window - if a stage's work is too large for two \
+weeks, split it into multiple sequential Outcomes rather than proposing one oversized one. \
+Each Outcome needs a short title, a one-to-two sentence description specific to this \
+initiative (not generic boilerplate), the stage it belongs to, and a rough forecast in \
+engineer-days (at most 10, since the delivery window is two weeks). Use the \
+record_task_breakdown tool to return your answer."""
 
 TASK_BREAKDOWN_TOOL = {
     "name": "record_task_breakdown",
@@ -77,6 +85,7 @@ def _build_user_prompt(initiative, category_name: str | None) -> str:
         f"Title: {initiative.title}",
         f"Description: {initiative.description or 'N/A'}",
         f"Business goal: {initiative.business_goal or 'N/A'}",
+        f"Ask (what the Cloud Team needs to provide): {initiative.ask or 'N/A'}",
         f"Jira number: {initiative.jira_number or 'N/A'}",
         f"Start date: {initiative.start_date or 'N/A'}",
         f"Expected delivery date: {initiative.expected_delivery_date or 'N/A'}",
@@ -169,8 +178,13 @@ def generate_and_persist_breakdown(
         db.commit()
         raise
 
+    # Date math is computed here, not trusted to the LLM: each suggested Outcome gets a
+    # sequential, non-overlapping two-week Wednesday-to-Wednesday window, chained off the
+    # initiative's start date (or today, if unset).
+    windows = sequential_wednesday_windows(initiative.start_date or date.today(), len(suggested_tasks))
+
     created_tasks = []
-    for suggestion in suggested_tasks:
+    for suggestion, (start_date, delivery_date) in zip(suggested_tasks, windows):
         task = Task(
             initiative_id=initiative.id,
             title=suggestion.title,
@@ -178,6 +192,8 @@ def generate_and_persist_breakdown(
             stage=suggestion.stage,
             owner_engineer_id=default_owner_engineer_id,
             forecast_duration_days=suggestion.forecast_duration_days,
+            start_date=start_date,
+            delivery_date=delivery_date,
             sequence_order=next_order + suggestion.sequence_order,
             is_ai_generated=True,
         )

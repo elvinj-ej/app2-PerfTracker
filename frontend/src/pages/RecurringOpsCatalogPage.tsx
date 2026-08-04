@@ -1,15 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { createRecurringOps, listRecurringOps } from '../api/recurringOps'
+import { createRecurringOps, listRecurringOps, listRecurringOpsCategories } from '../api/recurringOps'
 import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
 
 function NewRecurringOpsForm() {
   const { actor } = useActor()
   const queryClient = useQueryClient()
+  const { data: categories } = useQuery({
+    queryKey: ['recurring-ops-categories'],
+    queryFn: () => listRecurringOpsCategories(actor),
+  })
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [recurrenceType, setRecurrenceType] = useState('MONTHLY')
 
   const mutation = useMutation({
@@ -17,6 +22,7 @@ function NewRecurringOpsForm() {
       createRecurringOps(actor, {
         title,
         description: description || null,
+        category_id: Number(categoryId),
         recurrence_type: recurrenceType,
         status: 'OPEN',
       }),
@@ -24,6 +30,7 @@ function NewRecurringOpsForm() {
       queryClient.invalidateQueries({ queryKey: ['recurring-ops'] })
       setTitle('')
       setDescription('')
+      setCategoryId('')
     },
   })
 
@@ -31,13 +38,23 @@ function NewRecurringOpsForm() {
 
   return (
     <section className="card">
-      <h2>New Recurring Operations Item</h2>
+      <h2>New Run Operations Item</h2>
       <div className="form-grid">
         <FormField label="Title" hint="What the recurring work is">
           <input placeholder="e.g. Monthly Patching - Windows Fleet" value={title} onChange={(e) => setTitle(e.target.value)} />
         </FormField>
         <FormField label="Description" hint="Optional extra context">
           <input placeholder="e.g. Routine OS patching" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </FormField>
+        <FormField label="Category" hint="Which Run Operations category this belongs to">
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="">Category…</option>
+            {(categories ?? []).map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
         </FormField>
         <FormField label="Recurrence" hint="How often this repeats">
           <select value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value)}>
@@ -49,7 +66,7 @@ function NewRecurringOpsForm() {
           </select>
         </FormField>
       </div>
-      <button className="btn btn-primary" disabled={!title || mutation.isPending} onClick={() => mutation.mutate()}>
+      <button className="btn btn-primary" disabled={!title || !categoryId || mutation.isPending} onClick={() => mutation.mutate()}>
         Create
       </button>
     </section>
@@ -63,7 +80,7 @@ export function RecurringOpsCatalogPage() {
   return (
     <div className="page">
       <div className="page-toolbar">
-        <h1 className="page-title">Recurring Operations</h1>
+        <h1 className="page-title">Run Operations</h1>
       </div>
 
       <NewRecurringOpsForm />
@@ -75,6 +92,7 @@ export function RecurringOpsCatalogPage() {
             <thead>
               <tr>
                 <th>Title</th>
+                <th>Category</th>
                 <th>Recurrence</th>
                 <th>Status</th>
                 <th></th>
@@ -84,6 +102,7 @@ export function RecurringOpsCatalogPage() {
               {(data ?? []).map((item) => (
                 <tr key={item.id}>
                   <td>{item.title}</td>
+                  <td>{item.category.name}</td>
                   <td>{item.recurrence_type}</td>
                   <td>{item.status}</td>
                   <td>

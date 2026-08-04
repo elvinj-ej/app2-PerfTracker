@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict
 
 from app.models.enums import TaskStage, TaskStatus
@@ -9,6 +11,8 @@ class TaskBase(BaseModel):
     stage: TaskStage | None = None
     owner_engineer_id: int
     forecast_duration_days: float | None = None
+    start_date: date | None = None
+    delivery_date: date | None = None
     status: TaskStatus = TaskStatus.NOT_STARTED
 
 
@@ -22,6 +26,8 @@ class TaskUpdate(BaseModel):
     stage: TaskStage | None = None
     owner_engineer_id: int | None = None
     forecast_duration_days: float | None = None
+    start_date: date | None = None
+    delivery_date: date | None = None
     status: TaskStatus | None = None
 
 

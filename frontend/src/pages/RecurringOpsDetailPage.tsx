@@ -45,6 +45,8 @@ export function RecurringOpsDetailPage() {
         <dl className="detail-grid">
           <dt>Description</dt>
           <dd>{item.description ?? '—'}</dd>
+          <dt>Category</dt>
+          <dd>{item.category.name}</dd>
           <dt>Recurrence</dt>
           <dd>
             {item.recurrence_type}
@@ -56,7 +58,7 @@ export function RecurringOpsDetailPage() {
       </section>
 
       <p className="text-muted">
-        Recurring operations tasks have no forecast — only actual time logged is tracked.
+        Run Operations outcomes have no forecast — only actual time logged is tracked.
       </p>
 
       {engineersQuery.data && tasksQuery.data && (

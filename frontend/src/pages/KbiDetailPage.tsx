@@ -42,6 +42,8 @@ export function KbiDetailPage() {
         <dl className="detail-grid">
           <dt>Business Goal</dt>
           <dd>{kbi.business_goal ?? '—'}</dd>
+          <dt>The Ask</dt>
+          <dd>{kbi.ask ?? '—'}</dd>
           <dt>Jira Number</dt>
           <dd>{kbi.jira_number ?? '—'}</dd>
           <dt>Start Date</dt>

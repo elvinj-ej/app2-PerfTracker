@@ -131,10 +131,10 @@ export function MonthlyReportPage() {
             <MonthlyInitiativeCard key={initiative.id} initiative={initiative} showCategory />
           ))}
 
-          <h2 className="section-heading">Recurring Operations</h2>
+          <h2 className="section-heading">Run Operations</h2>
           {reportQuery.data.recurring_ops.length === 0 && <p className="text-muted">None.</p>}
           {reportQuery.data.recurring_ops.map((initiative) => (
-            <MonthlyInitiativeCard key={initiative.id} initiative={initiative} />
+            <MonthlyInitiativeCard key={initiative.id} initiative={initiative} showCategory />
           ))}
         </>
       )}

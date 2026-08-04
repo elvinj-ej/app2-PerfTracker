@@ -1,11 +1,12 @@
 import type { Actor } from '../context/ActorContext'
-import type { RecurringOps } from '../types/api'
+import type { RecurringOps, RecurringOpsCategory } from '../types/api'
 import { apiFetch } from './client'
 
 export interface RecurringOpsPayload {
   title: string
   description?: string | null
   status?: string
+  category_id: number
   recurrence_type: string
   recurrence_interval?: number
   anchor_month?: number | null
@@ -14,6 +15,10 @@ export interface RecurringOpsPayload {
 
 export function listRecurringOps(actor: Actor): Promise<RecurringOps[]> {
   return apiFetch<RecurringOps[]>('/api/recurring-ops', actor)
+}
+
+export function listRecurringOpsCategories(actor: Actor): Promise<RecurringOpsCategory[]> {
+  return apiFetch<RecurringOpsCategory[]>('/api/recurring-ops-categories', actor)
 }
 
 export function getRecurringOps(actor: Actor, id: number): Promise<RecurringOps> {

@@ -9,7 +9,7 @@ from datetime import date
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Engineer, Initiative, PlatformInitiativeDetail, Task, TimeEntry
+from app.models import Engineer, Initiative, PlatformInitiativeDetail, RecurringOpsDetail, Task, TimeEntry
 from app.models.enums import InitiativeType
 from app.schemas.reporting import (
     CategoryHours,
@@ -44,9 +44,11 @@ def _task_hours_map(db: Session, task_ids: list[int]) -> dict[int, float]:
     return {task_id: float(total) for task_id, total in rows}
 
 
-def _platform_category_name(initiative: Initiative) -> str | None:
+def _category_name(initiative: Initiative) -> str | None:
     if initiative.type == InitiativeType.PLATFORM and initiative.platform_detail:
         return initiative.platform_detail.category.name
+    if initiative.type == InitiativeType.RECURRING_OPS and initiative.recurring_ops_detail:
+        return initiative.recurring_ops_detail.category.name
     return None
 
 
@@ -84,7 +86,7 @@ def build_initiative_summary(initiative: Initiative, hours_by_task: dict[int, fl
         type=initiative.type,
         title=initiative.title,
         status=initiative.status.value,
-        category_name=_platform_category_name(initiative),
+        category_name=_category_name(initiative),
         start_date=initiative.start_date,
         expected_delivery_date=initiative.expected_delivery_date,
         completion_pct=result.completion_pct,
@@ -101,7 +103,7 @@ def build_recurring_ops_summary(initiative: Initiative, hours_by_task: dict[int,
         type=initiative.type,
         title=initiative.title,
         status=initiative.status.value,
-        category_name=None,
+        category_name=_category_name(initiative),
         start_date=None,
         expected_delivery_date=None,
         completion_pct=None,
@@ -121,7 +123,7 @@ def _load_initiatives(db: Session, initiative_ids: list[int]) -> list[Initiative
             selectinload(Initiative.tasks),
             selectinload(Initiative.upgrade_units),
             selectinload(Initiative.platform_detail).selectinload(PlatformInitiativeDetail.category),
-            selectinload(Initiative.recurring_ops_detail),
+            selectinload(Initiative.recurring_ops_detail).selectinload(RecurringOpsDetail.category),
         )
         .all()
     )
@@ -199,7 +201,7 @@ def build_team_summary(db: Session) -> TeamSummary:
             selectinload(Initiative.tasks),
             selectinload(Initiative.upgrade_units),
             selectinload(Initiative.platform_detail).selectinload(PlatformInitiativeDetail.category),
-            selectinload(Initiative.recurring_ops_detail),
+            selectinload(Initiative.recurring_ops_detail).selectinload(RecurringOpsDetail.category),
         )
         .all()
     )
@@ -284,7 +286,7 @@ def build_monthly_report(db: Session, month: str) -> MonthlyReport:
             selectinload(Initiative.tasks).selectinload(Task.owner),
             selectinload(Initiative.upgrade_units),
             selectinload(Initiative.platform_detail).selectinload(PlatformInitiativeDetail.category),
-            selectinload(Initiative.recurring_ops_detail),
+            selectinload(Initiative.recurring_ops_detail).selectinload(RecurringOpsDetail.category),
         )
         .all()
     )
@@ -326,7 +328,7 @@ def build_monthly_report(db: Session, month: str) -> MonthlyReport:
             id=initiative.id,
             type=initiative.type,
             title=initiative.title,
-            category_name=_platform_category_name(initiative),
+            category_name=_category_name(initiative),
             status=initiative.status.value,
             completion_pct=completion_pct,
             expected_delivery_date=initiative.expected_delivery_date,

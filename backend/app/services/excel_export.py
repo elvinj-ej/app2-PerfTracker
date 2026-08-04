@@ -18,7 +18,7 @@ from app.schemas.reporting import MonthlyInitiativeReport, MonthlyReport
 CATEGORY_LABELS: dict[InitiativeType, str] = {
     InitiativeType.KBI: "Key Business Initiative",
     InitiativeType.PLATFORM: "Platform Initiative",
-    InitiativeType.RECURRING_OPS: "Recurring Operations",
+    InitiativeType.RECURRING_OPS: "Run Operations",
 }
 
 _HEADER_FILL = PatternFill(start_color="FF1F2937", end_color="FF1F2937", fill_type="solid")

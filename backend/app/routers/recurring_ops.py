@@ -29,7 +29,8 @@ def create_recurring_ops(
     require_manager(actor)
     data = payload.model_dump()
     recurrence_fields = {
-        k: data.pop(k) for k in ("recurrence_type", "recurrence_interval", "anchor_month", "anchor_day")
+        k: data.pop(k)
+        for k in ("category_id", "recurrence_type", "recurrence_interval", "anchor_month", "anchor_day")
     }
     initiative = Initiative(type=InitiativeType.RECURRING_OPS, **data)
     db.add(initiative)
@@ -62,7 +63,7 @@ def update_recurring_ops(
     require_manager(actor)
     initiative = _get_recurring_ops_or_404(db, initiative_id)
     data = payload.model_dump(exclude_unset=True)
-    for field in ("recurrence_type", "recurrence_interval", "anchor_month", "anchor_day"):
+    for field in ("category_id", "recurrence_type", "recurrence_interval", "anchor_month", "anchor_day"):
         if field in data:
             setattr(initiative.recurring_ops_detail, field, data.pop(field))
     for field, value in data.items():

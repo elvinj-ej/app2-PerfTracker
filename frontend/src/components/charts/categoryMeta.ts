@@ -9,7 +9,7 @@ export interface CategoryMeta {
 export const CATEGORY_META: CategoryMeta[] = [
   { type: 'KBI', label: 'Key Business Initiatives', varName: '--series-kbi' },
   { type: 'PLATFORM', label: 'Platform Initiatives', varName: '--series-platform' },
-  { type: 'RECURRING_OPS', label: 'Recurring Operations', varName: '--series-recurring' },
+  { type: 'RECURRING_OPS', label: 'Run Operations', varName: '--series-recurring' },
 ]
 
 export const CATEGORY_META_BY_TYPE: Record<InitiativeType, CategoryMeta> = Object.fromEntries(

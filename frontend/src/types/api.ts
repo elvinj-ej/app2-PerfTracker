@@ -27,6 +27,14 @@ export interface PlatformInitiativeCategory {
   sort_order: number
 }
 
+export interface RecurringOpsCategory {
+  id: number
+  name: string
+  description: string | null
+  active: boolean
+  sort_order: number
+}
+
 export interface InitiativeSummary {
   id: number
   type: InitiativeType
@@ -78,6 +86,8 @@ export interface Task {
   stage: TaskStage | null
   owner_engineer_id: number
   forecast_duration_days: number | null
+  start_date: string | null
+  delivery_date: string | null
   status: TaskStatus
   sequence_order: number
   is_ai_generated: boolean
@@ -89,6 +99,7 @@ export interface Kbi {
   title: string
   description: string | null
   business_goal: string | null
+  ask: string | null
   jira_number: string | null
   start_date: string | null
   expected_delivery_date: string | null
@@ -120,6 +131,7 @@ export interface RecurringOps {
   title: string
   description: string | null
   status: string
+  category: RecurringOpsCategory
   recurrence_type: string
   recurrence_interval: number
   anchor_month: number | null

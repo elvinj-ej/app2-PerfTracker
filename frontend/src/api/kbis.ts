@@ -6,6 +6,7 @@ export interface KbiPayload {
   title: string
   description?: string | null
   business_goal?: string | null
+  ask?: string | null
   jira_number?: string | null
   start_date?: string | null
   expected_delivery_date?: string | null

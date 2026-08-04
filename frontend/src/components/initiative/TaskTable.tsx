@@ -3,15 +3,15 @@ import type { TaskSummary } from '../../types/api'
 export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
   return (
     <section className="card">
-      <h2>My Tasks</h2>
+      <h2>My Outcomes</h2>
       {tasks.length === 0 ? (
-        <p className="text-muted">No tasks assigned yet.</p>
+        <p className="text-muted">No outcomes assigned yet.</p>
       ) : (
         <div className="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>Task</th>
+                <th>Outcome</th>
                 <th>Initiative</th>
                 <th>Stage</th>
                 <th>Status</th>

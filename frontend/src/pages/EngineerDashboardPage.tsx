@@ -67,8 +67,9 @@ export function EngineerDashboardPage() {
             emptyMessage="Not opted into any Platform Initiatives yet."
           />
           <InitiativeTable
-            title="Recurring Operations"
+            title="Run Operations"
             rows={dashboardQuery.data.recurring_ops}
+            showCategory
             emptyMessage="No recurring operational work assigned yet."
           />
           <TaskTable tasks={dashboardQuery.data.tasks} />

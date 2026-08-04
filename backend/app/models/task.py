@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -22,6 +22,8 @@ class Task(Base):
     stage: Mapped[TaskStage | None] = mapped_column(Enum(TaskStage, name="task_stage"), nullable=True)
     owner_engineer_id: Mapped[int] = mapped_column(ForeignKey("engineers.id"), nullable=False)
     forecast_duration_days: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[TaskStatus] = mapped_column(
         Enum(TaskStatus, name="task_status"), nullable=False, default=TaskStatus.NOT_STARTED
     )

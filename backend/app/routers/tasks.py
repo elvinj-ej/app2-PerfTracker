@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Engineer, Initiative, Task
 from app.schemas.task import TaskCreate, TaskRead, TaskReorderRequest, TaskUpdate
+from app.services.outcome_dates import OutcomeDateError, validate_delivery_span
 
 router = APIRouter(tags=["tasks"])
 
@@ -27,6 +28,13 @@ def _validate_owner(db: Session, owner_engineer_id: int) -> None:
         raise HTTPException(status_code=400, detail="owner_engineer_id does not reference a known engineer")
 
 
+def _validate_dates(start_date, delivery_date) -> None:
+    try:
+        validate_delivery_span(start_date, delivery_date)
+    except OutcomeDateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/api/initiatives/{initiative_id}/tasks", response_model=list[TaskRead])
 def list_tasks(initiative_id: int, db: Session = Depends(get_db)):
     _get_initiative_or_404(db, initiative_id)
@@ -37,6 +45,7 @@ def list_tasks(initiative_id: int, db: Session = Depends(get_db)):
 def create_task(initiative_id: int, payload: TaskCreate, db: Session = Depends(get_db)):
     _get_initiative_or_404(db, initiative_id)
     _validate_owner(db, payload.owner_engineer_id)
+    _validate_dates(payload.start_date, payload.delivery_date)
     max_order = (
         db.query(Task.sequence_order).filter(Task.initiative_id == initiative_id).order_by(Task.sequence_order.desc()).first()
     )
@@ -54,6 +63,10 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
     data = payload.model_dump(exclude_unset=True)
     if "owner_engineer_id" in data:
         _validate_owner(db, data["owner_engineer_id"])
+    _validate_dates(
+        data.get("start_date", task.start_date),
+        data.get("delivery_date", task.delivery_date),
+    )
     for field, value in data.items():
         setattr(task, field, value)
     db.commit()

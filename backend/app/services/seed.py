@@ -15,6 +15,7 @@ from app.models import (
     InitiativeEngineer,
     PlatformInitiativeCategory,
     PlatformInitiativeDetail,
+    RecurringOpsCategory,
     RecurringOpsDetail,
     Task,
     TimeEntry,
@@ -31,6 +32,7 @@ from app.models.enums import (
     UpgradeUnitStatus,
 )
 from app.services.fiscal_year import week_start
+from app.services.outcome_dates import sequential_wednesday_windows
 
 
 def _clear_all(db: Session) -> None:
@@ -44,6 +46,7 @@ def _clear_all(db: Session) -> None:
         RecurringOpsDetail,
         Initiative,
         PlatformInitiativeCategory,
+        RecurringOpsCategory,
         Engineer,
     ):
         db.execute(delete(model))
@@ -78,6 +81,16 @@ def seed(db: Session) -> None:
     sql_upgrade_category = categories[0]
     automation_category = categories[6]
 
+    run_ops_categories = [
+        RecurringOpsCategory(name="Run Patching", sort_order=1),
+        RecurringOpsCategory(name="Run ITSCM", sort_order=2),
+        RecurringOpsCategory(name="Run IAM", sort_order=3),
+        RecurringOpsCategory(name="Run FinOps", sort_order=4),
+    ]
+    db.add_all(run_ops_categories)
+    db.flush()
+    run_patching_category, _run_itscm, run_iam_category, _run_finops = run_ops_categories
+
     today = date.today()
 
     # --- Sample KBI ---
@@ -86,6 +99,7 @@ def seed(db: Session) -> None:
         title="Customer Portal Migration to New Data Center",
         description="Migrate the customer-facing portal's backend infrastructure to the new data center.",
         business_goal="Reduce hosting costs and improve regional latency for APAC customers.",
+        ask="Cloud Team needs to migrate the portal's backend to the new data center with zero customer downtime.",
         jira_number="CLOUD-1042",
         start_date=today - timedelta(days=30),
         expected_delivery_date=today + timedelta(days=60),
@@ -102,6 +116,7 @@ def seed(db: Session) -> None:
         ]
     )
 
+    kbi_outcome_windows = sequential_wednesday_windows(kbi.start_date, 5)
     kbi_tasks = [
         Task(
             initiative_id=kbi.id,
@@ -109,6 +124,8 @@ def seed(db: Session) -> None:
             stage=TaskStage.HLD,
             owner_engineer_id=priya.id,
             forecast_duration_days=5,
+            start_date=kbi_outcome_windows[0][0],
+            delivery_date=kbi_outcome_windows[0][1],
             status=TaskStatus.COMPLETE,
             sequence_order=0,
         ),
@@ -118,6 +135,8 @@ def seed(db: Session) -> None:
             stage=TaskStage.LLD,
             owner_engineer_id=priya.id,
             forecast_duration_days=8,
+            start_date=kbi_outcome_windows[1][0],
+            delivery_date=kbi_outcome_windows[1][1],
             status=TaskStatus.COMPLETE,
             sequence_order=1,
         ),
@@ -127,6 +146,8 @@ def seed(db: Session) -> None:
             stage=TaskStage.SOLUTION_DESIGN_APPROVAL,
             owner_engineer_id=marcus.id,
             forecast_duration_days=3,
+            start_date=kbi_outcome_windows[2][0],
+            delivery_date=kbi_outcome_windows[2][1],
             status=TaskStatus.IN_PROGRESS,
             sequence_order=2,
         ),
@@ -136,6 +157,8 @@ def seed(db: Session) -> None:
             stage=TaskStage.NON_PROD_DEPLOYMENT,
             owner_engineer_id=marcus.id,
             forecast_duration_days=10,
+            start_date=kbi_outcome_windows[3][0],
+            delivery_date=kbi_outcome_windows[3][1],
             status=TaskStatus.NOT_STARTED,
             sequence_order=3,
         ),
@@ -145,6 +168,8 @@ def seed(db: Session) -> None:
             stage=TaskStage.PROD_DEPLOYMENT,
             owner_engineer_id=priya.id,
             forecast_duration_days=6,
+            start_date=kbi_outcome_windows[4][0],
+            delivery_date=kbi_outcome_windows[4][1],
             status=TaskStatus.NOT_STARTED,
             sequence_order=4,
         ),
@@ -253,6 +278,7 @@ def seed(db: Session) -> None:
     db.add(
         RecurringOpsDetail(
             initiative_id=monthly_patching.id,
+            category_id=run_patching_category.id,
             recurrence_type=RecurrenceType.MONTHLY,
             recurrence_interval=1,
         )
@@ -288,6 +314,7 @@ def seed(db: Session) -> None:
     db.add(
         RecurringOpsDetail(
             initiative_id=annual_reset.id,
+            category_id=run_iam_category.id,
             recurrence_type=RecurrenceType.ANNUAL,
             recurrence_interval=1,
             anchor_month=7,

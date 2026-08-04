@@ -45,8 +45,9 @@ export function TeamSummaryPage() {
             emptyMessage="No Platform Initiatives yet."
           />
           <InitiativeTable
-            title="Recurring Operations"
+            title="Run Operations"
             rows={data.recurring_ops}
+            showCategory
             emptyMessage="No recurring operational work yet."
           />
         </>

@@ -32,6 +32,23 @@ class PlatformInitiativeCategory(Base):
     details = relationship("PlatformInitiativeDetail", back_populates="category")
 
 
+class RecurringOpsCategory(Base):
+    """Manager-editable lookup of Run Operations categories (Run Patching, Run ITSCM, etc.),
+    mirroring PlatformInitiativeCategory - same rationale: runtime-editable rather than a
+    hardcoded enum so the manager can add new categories without a code deploy.
+    """
+
+    __tablename__ = "recurring_ops_categories"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    details = relationship("RecurringOpsDetail", back_populates="category")
+
+
 class Initiative(Base):
     """Single-table-inheritance master row for all three work categories (KBI / Platform /
     Recurring Ops). A shared master table keeps Tasks, TimeEntries, and opt-ins pointing at
@@ -46,6 +63,7 @@ class Initiative(Base):
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     business_goal: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ask: Mapped[str | None] = mapped_column(Text, nullable=True)
     jira_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     expected_delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -84,6 +102,7 @@ class RecurringOpsDetail(Base):
     __tablename__ = "recurring_ops_details"
 
     initiative_id: Mapped[int] = mapped_column(ForeignKey("initiatives.id"), primary_key=True)
+    category_id: Mapped[int] = mapped_column(ForeignKey("recurring_ops_categories.id"), nullable=False)
     recurrence_type: Mapped[RecurrenceType] = mapped_column(
         Enum(RecurrenceType, name="recurrence_type"), nullable=False
     )
@@ -92,3 +111,4 @@ class RecurringOpsDetail(Base):
     anchor_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     initiative = relationship("Initiative", back_populates="recurring_ops_detail")
+    category = relationship("RecurringOpsCategory", back_populates="details")

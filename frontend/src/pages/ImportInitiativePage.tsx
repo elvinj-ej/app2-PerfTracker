@@ -15,6 +15,7 @@ interface ReviewForm {
   jira_number: string
   description: string
   business_goal: string
+  ask: string
   start_date: string
   expected_delivery_date: string
   priority: string
@@ -29,6 +30,7 @@ function formFromPreview(preview: JiraImportPreview): ReviewForm {
     jira_number: preview.jira_number ?? '',
     description: preview.description ?? '',
     business_goal: preview.business_goal ?? '',
+    ask: '',
     start_date: preview.start_date ?? '',
     expected_delivery_date: preview.expected_delivery_date ?? '',
     priority: preview.priority ?? 'MEDIUM',
@@ -92,7 +94,15 @@ export function ImportInitiativePage() {
         status: form.status,
       }
       if (targetType === 'KBI') {
-        return { type: 'KBI' as const, result: await createKbi(actor, { ...basePayload, jira_number: form.jira_number || null, complexity: form.complexity || null }) }
+        return {
+          type: 'KBI' as const,
+          result: await createKbi(actor, {
+            ...basePayload,
+            jira_number: form.jira_number || null,
+            complexity: form.complexity || null,
+            ask: form.ask || null,
+          }),
+        }
       }
       if (!form.category_id) {
         throw new Error('Choose a category for the Platform Initiative.')
@@ -249,6 +259,15 @@ export function ImportInitiativePage() {
                 onChange={(e) => setForm({ ...form, business_goal: e.target.value })}
               />
             </FormField>
+            {targetType === 'KBI' && (
+              <FormField label="The Ask" hint="What the Cloud Team needs to provide">
+                <input
+                  placeholder="The Ask"
+                  value={form.ask}
+                  onChange={(e) => setForm({ ...form, ask: e.target.value })}
+                />
+              </FormField>
+            )}
             <FormField label="Start Date" hint="When work begins">
               <input
                 type="date"
