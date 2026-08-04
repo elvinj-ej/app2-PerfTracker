@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createKbi, listKbis } from '../api/kbis'
+import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
 
 function NewKbiForm() {
@@ -43,22 +44,36 @@ function NewKbiForm() {
     <section className="card">
       <h2>New Key Business Initiative</h2>
       <div className="form-grid">
-        <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <input placeholder="Business goal" value={businessGoal} onChange={(e) => setBusinessGoal(e.target.value)} />
-        <input placeholder="Jira number" value={jira} onChange={(e) => setJira(e.target.value)} />
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
-        <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-          <option value="LOW">Low</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="HIGH">High</option>
-          <option value="CRITICAL">Critical</option>
-        </select>
-        <select value={complexity} onChange={(e) => setComplexity(e.target.value)}>
-          <option value="LOW">Low</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="HIGH">High</option>
-        </select>
+        <FormField label="Title" hint="What the initiative is about">
+          <input placeholder="e.g. Customer Portal Migration" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </FormField>
+        <FormField label="Business Goal" hint="The outcome this needs to achieve">
+          <input placeholder="e.g. Reduce hosting costs" value={businessGoal} onChange={(e) => setBusinessGoal(e.target.value)} />
+        </FormField>
+        <FormField label="Jira Number" hint="Optional, e.g. ME-1">
+          <input placeholder="ME-1" value={jira} onChange={(e) => setJira(e.target.value)} />
+        </FormField>
+        <FormField label="Start Date" hint="When work begins">
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </FormField>
+        <FormField label="Expected Delivery" hint="Target completion date">
+          <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
+        </FormField>
+        <FormField label="Priority" hint="How urgent this is">
+          <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+        </FormField>
+        <FormField label="Complexity" hint="Expected effort/difficulty">
+          <select value={complexity} onChange={(e) => setComplexity(e.target.value)}>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+          </select>
+        </FormField>
       </div>
       <button className="btn btn-primary" disabled={!title || mutation.isPending} onClick={() => mutation.mutate()}>
         Create

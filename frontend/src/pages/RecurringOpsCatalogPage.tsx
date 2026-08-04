@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createRecurringOps, listRecurringOps } from '../api/recurringOps'
+import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
 
 function NewRecurringOpsForm() {
@@ -32,15 +33,21 @@ function NewRecurringOpsForm() {
     <section className="card">
       <h2>New Recurring Operations Item</h2>
       <div className="form-grid">
-        <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <input placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-        <select value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value)}>
-          <option value="ANNUAL">Annual</option>
-          <option value="QUARTERLY">Quarterly</option>
-          <option value="MONTHLY">Monthly</option>
-          <option value="WEEKLY">Weekly</option>
-          <option value="AD_HOC">Ad Hoc</option>
-        </select>
+        <FormField label="Title" hint="What the recurring work is">
+          <input placeholder="e.g. Monthly Patching - Windows Fleet" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </FormField>
+        <FormField label="Description" hint="Optional extra context">
+          <input placeholder="e.g. Routine OS patching" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </FormField>
+        <FormField label="Recurrence" hint="How often this repeats">
+          <select value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value)}>
+            <option value="ANNUAL">Annual</option>
+            <option value="QUARTERLY">Quarterly</option>
+            <option value="MONTHLY">Monthly</option>
+            <option value="WEEKLY">Weekly</option>
+            <option value="AD_HOC">Ad Hoc</option>
+          </select>
+        </FormField>
       </div>
       <button className="btn btn-primary" disabled={!title || mutation.isPending} onClick={() => mutation.mutate()}>
         Create

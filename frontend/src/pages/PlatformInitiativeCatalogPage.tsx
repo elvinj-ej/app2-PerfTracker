@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createPlatformInitiative, listPlatformCategories, listPlatformInitiatives } from '../api/platformInitiatives'
+import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
 
 function NewPlatformInitiativeForm() {
@@ -40,17 +41,25 @@ function NewPlatformInitiativeForm() {
     <section className="card">
       <h2>New Platform Initiative</h2>
       <div className="form-grid">
-        <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <input placeholder="Business goal" value={businessGoal} onChange={(e) => setBusinessGoal(e.target.value)} />
-        <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-          <option value="">Category…</option>
-          {(categories ?? []).map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
+        <FormField label="Title" hint="What the initiative is about">
+          <input placeholder="e.g. Q3 SQL Server Fleet Upgrade" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </FormField>
+        <FormField label="Business Goal" hint="The outcome this needs to achieve">
+          <input placeholder="e.g. Maintain vendor support" value={businessGoal} onChange={(e) => setBusinessGoal(e.target.value)} />
+        </FormField>
+        <FormField label="Expected Delivery" hint="Target completion date">
+          <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
+        </FormField>
+        <FormField label="Category" hint="Upgrade type, improvement, automation, etc.">
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="">Category…</option>
+            {(categories ?? []).map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
       </div>
       <button className="btn btn-primary" disabled={!title || !categoryId || mutation.isPending} onClick={() => mutation.mutate()}>
         Create

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { previewJiraXmlImport } from '../api/initiativeImport'
 import { createKbi } from '../api/kbis'
 import { createPlatformInitiative, listPlatformCategories } from '../api/platformInitiatives'
+import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
 import type { JiraImportPreview } from '../types/api'
 
@@ -185,74 +186,94 @@ export function ImportInitiativePage() {
           </div>
 
           <div className="form-grid">
-            <input
-              placeholder="Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-            />
-            {targetType === 'KBI' && (
+            <FormField label="Title" hint="What the initiative is about">
               <input
-                placeholder="Jira number"
-                value={form.jira_number}
-                onChange={(e) => setForm({ ...form, jira_number: e.target.value })}
+                placeholder="Title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
               />
-            )}
-            <input
-              placeholder="Business goal"
-              value={form.business_goal}
-              onChange={(e) => setForm({ ...form, business_goal: e.target.value })}
-            />
-            <input
-              type="date"
-              value={form.start_date}
-              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-            />
-            <input
-              type="date"
-              value={form.expected_delivery_date}
-              onChange={(e) => setForm({ ...form, expected_delivery_date: e.target.value })}
-            />
-            <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-              <option value="CRITICAL">Critical</option>
-            </select>
+            </FormField>
             {targetType === 'KBI' && (
-              <select value={form.complexity} onChange={(e) => setForm({ ...form, complexity: e.target.value })}>
+              <FormField label="Jira Number" hint="From the imported issue">
+                <input
+                  placeholder="Jira number"
+                  value={form.jira_number}
+                  onChange={(e) => setForm({ ...form, jira_number: e.target.value })}
+                />
+              </FormField>
+            )}
+            <FormField label="Business Goal" hint="The outcome this needs to achieve">
+              <input
+                placeholder="Business goal"
+                value={form.business_goal}
+                onChange={(e) => setForm({ ...form, business_goal: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Start Date" hint="When work begins">
+              <input
+                type="date"
+                value={form.start_date}
+                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Expected Delivery" hint="Target completion date">
+              <input
+                type="date"
+                value={form.expected_delivery_date}
+                onChange={(e) => setForm({ ...form, expected_delivery_date: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Priority" hint="How urgent this is">
+              <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="HIGH">High</option>
+                <option value="CRITICAL">Critical</option>
               </select>
+            </FormField>
+            {targetType === 'KBI' && (
+              <FormField label="Complexity" hint="Expected effort/difficulty">
+                <select value={form.complexity} onChange={(e) => setForm({ ...form, complexity: e.target.value })}>
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                </select>
+              </FormField>
             )}
             {targetType === 'PLATFORM' && (
-              <select
-                value={form.category_id}
-                onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-              >
-                <option value="">Category…</option>
-                {(categories ?? []).map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+              <FormField label="Category" hint="Upgrade type, improvement, automation, etc.">
+                <select
+                  value={form.category_id}
+                  onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                >
+                  <option value="">Category…</option>
+                  {(categories ?? []).map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
             )}
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              <option value="DRAFT">Draft</option>
-              <option value="OPEN">Open</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
+            <FormField label="Status" hint="Current state of the initiative">
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                <option value="DRAFT">Draft</option>
+                <option value="OPEN">Open</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </FormField>
           </div>
 
-          <textarea
-            className="import-description"
-            rows={6}
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <FormField label="Description" hint="Full details, imported from Jira and editable">
+            <textarea
+              className="import-description"
+              rows={6}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </FormField>
 
           {createMutation.isError && (
             <p className="text-error">{(createMutation.error as Error).message}</p>
