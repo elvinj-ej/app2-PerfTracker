@@ -43,9 +43,10 @@ for standing up new initiatives.
   weekly), plus an **Export to Excel** button producing a two-sheet workbook
   (task detail, and an engineer × category hours summary) covering all three
   categories for that month.
-- **Import from Jira** — upload a Jira single-issue XML export to pre-fill a
-  new initiative; review and edit every field, choose whether it becomes a
-  KBI or a Platform Initiative, and only then create it. See
+- **Import from Jira** — upload either a Jira single-issue XML export or a
+  Jira Word (.doc) export to pre-fill a new initiative; review and edit every
+  field, choose whether it becomes a KBI or a Platform Initiative, and only
+  then create it. See
   [Importing initiatives from Jira](#importing-initiatives-from-jira) below.
 
 ## Design
@@ -148,14 +149,15 @@ counts fully toward July, even though it runs into August).
 
 ## Importing initiatives from Jira
 
-A manager can import a Key Business Initiative or Platform Initiative from a
-Jira single-issue XML export (in Jira: open the issue → **Export** → **XML**)
-via the **Import from Jira** page. Upload the file, review the parsed fields
-(nothing is saved yet), choose whether it becomes a KBI or a Platform
-Initiative, edit anything, then create it.
+A manager can import a Key Business Initiative or Platform Initiative from
+either of Jira's single-issue export formats via the **Import from Jira**
+page — upload the file, review the parsed fields (nothing is saved yet),
+choose whether it becomes a KBI or a Platform Initiative, edit anything, then
+create it. Both formats feed the same review step and pull out the same set
+of fields.
 
-Only a specific, well-known set of fields is pulled out
-(`backend/app/services/jira_import.py`): the issue key, summary, description
+**XML export** (in Jira: open the issue → **Export** → **XML**), parsed by
+`backend/app/services/jira_import.py`: the issue key, summary, description
 (HTML stripped to plain text), the "Target start"/"Target end" custom fields
 for the initiative's dates, "Purpose" or "Opportunity" for the business goal,
 and the priority (mapped from Jira's Must/Should/Could/Won't Have scale to
@@ -163,6 +165,15 @@ Low/Medium/High/Critical). Linked issues (Blocks/Relates/etc.) are counted but
 not imported — there's no equivalent concept in this app. Uploaded XML is
 parsed with `defusedxml` rather than the stdlib parser, since this file comes
 from the user rather than from a trusted source.
+
+**Word export** (in Jira: open the issue → **Export** → **Word**), parsed by
+`backend/app/services/word_doc_import.py`. Despite the `.doc` extension, this
+is actually an HTML document with a label/value table layout, not a binary
+Word file, so it's parsed as text rather than requiring any Word-reading
+library. Pulls the same fields as the XML export, plus "Priority" and
+"Status" from their own labeled rows, and folds "Opportunity", "Who will
+Benefit?", and "Functional Stream" into the description (each clearly
+labeled) since there's no dedicated field for them in this app's data model.
 
 ## Running standalone on a server (no Docker) — recommended
 
@@ -312,5 +323,5 @@ PYTHONPATH=. pytest
 Covers fiscal-year boundary logic, the completion-% engine (including the
 upgrade-unit override and the timeline-health thresholds), the AI-breakdown
 parsing/persistence (against a mocked Claude client — no real API calls or
-cost in the test suite), and the Jira XML import parser (including a check
-that it rejects an XXE payload).
+cost in the test suite), and both Jira import parsers — the XML one
+(including a check that it rejects an XXE payload) and the Word/HTML one.

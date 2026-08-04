@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { previewJiraXmlImport } from '../api/initiativeImport'
+import { previewJiraXmlImport, previewWordDocImport } from '../api/initiativeImport'
 import { createKbi } from '../api/kbis'
 import { createPlatformInitiative, listPlatformCategories } from '../api/platformInitiatives'
 import { FormField } from '../components/common/FormField'
@@ -42,7 +42,8 @@ export function ImportInitiativePage() {
   const { actor } = useActor()
   const queryClient = useQueryClient()
 
-  const [file, setFile] = useState<File | null>(null)
+  const [xmlFile, setXmlFile] = useState<File | null>(null)
+  const [wordFile, setWordFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<JiraImportPreview | null>(null)
   const [form, setForm] = useState<ReviewForm | null>(null)
   const [targetType, setTargetType] = useState<TargetType>('KBI')
@@ -55,15 +56,27 @@ export function ImportInitiativePage() {
     enabled: targetType === 'PLATFORM',
   })
 
-  const previewMutation = useMutation({
+  function handlePreviewSuccess(data: JiraImportPreview) {
+    setPreview(data)
+    setForm(formFromPreview(data))
+    setPreviewError(null)
+    setCreatedLink(null)
+  }
+
+  function handlePreviewError(err: unknown) {
+    setPreviewError(err instanceof Error ? err.message : 'Failed to parse file.')
+  }
+
+  const previewXmlMutation = useMutation({
     mutationFn: (f: File) => previewJiraXmlImport(actor, f),
-    onSuccess: (data) => {
-      setPreview(data)
-      setForm(formFromPreview(data))
-      setPreviewError(null)
-      setCreatedLink(null)
-    },
-    onError: (err) => setPreviewError(err instanceof Error ? err.message : 'Failed to parse file.'),
+    onSuccess: handlePreviewSuccess,
+    onError: handlePreviewError,
+  })
+
+  const previewWordMutation = useMutation({
+    mutationFn: (f: File) => previewWordDocImport(actor, f),
+    onSuccess: handlePreviewSuccess,
+    onError: handlePreviewError,
   })
 
   const createMutation = useMutation({
@@ -97,7 +110,8 @@ export function ImportInitiativePage() {
         queryClient.invalidateQueries({ queryKey: ['platform-initiatives'] })
         setCreatedLink({ to: `/platform-initiatives/${result.id}`, label: 'View the new Platform Initiative' })
       }
-      setFile(null)
+      setXmlFile(null)
+      setWordFile(null)
       setPreview(null)
       setForm(null)
     },
@@ -114,35 +128,61 @@ export function ImportInitiativePage() {
   return (
     <div className="page">
       <div className="page-toolbar">
-        <h1 className="page-title">Import from Jira XML</h1>
+        <h1 className="page-title">Import from Jira</h1>
       </div>
 
       <section className="card">
         <p className="text-muted">
-          Upload a Jira single-issue XML export (open the issue in Jira, then Export → XML) to
-          pre-fill a new initiative. You'll review every field, choose whether it becomes a Key
-          Business Initiative or a Platform Initiative, and edit anything before it's created —
-          nothing is saved until you click Create.
+          Upload a Jira export to pre-fill a new initiative. Either format works. You'll review
+          every field, choose whether it becomes a Key Business Initiative or a Platform
+          Initiative, and edit anything before it's created — nothing is saved until you click
+          Create.
         </p>
-        <div className="add-task-form">
-          <input
-            type="file"
-            accept=".xml"
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null)
-              setPreview(null)
-              setForm(null)
-              setCreatedLink(null)
-            }}
-          />
+
+        <div className="import-source-row">
+          <FormField label="Jira XML export" hint="Open the issue in Jira, then Export → XML">
+            <input
+              type="file"
+              accept=".xml"
+              onChange={(e) => {
+                setXmlFile(e.target.files?.[0] ?? null)
+                setPreview(null)
+                setForm(null)
+                setCreatedLink(null)
+              }}
+            />
+          </FormField>
           <button
             className="btn btn-secondary"
-            disabled={!file || previewMutation.isPending}
-            onClick={() => file && previewMutation.mutate(file)}
+            disabled={!xmlFile || previewXmlMutation.isPending}
+            onClick={() => xmlFile && previewXmlMutation.mutate(xmlFile)}
           >
-            {previewMutation.isPending ? 'Parsing…' : 'Preview Import'}
+            {previewXmlMutation.isPending ? 'Parsing…' : 'Preview Import'}
           </button>
         </div>
+
+        <div className="import-source-row">
+          <FormField label="Jira Word (.doc) export" hint="Open the issue in Jira, then Export → Word">
+            <input
+              type="file"
+              accept=".doc,.html,.htm"
+              onChange={(e) => {
+                setWordFile(e.target.files?.[0] ?? null)
+                setPreview(null)
+                setForm(null)
+                setCreatedLink(null)
+              }}
+            />
+          </FormField>
+          <button
+            className="btn btn-secondary"
+            disabled={!wordFile || previewWordMutation.isPending}
+            onClick={() => wordFile && previewWordMutation.mutate(wordFile)}
+          >
+            {previewWordMutation.isPending ? 'Parsing…' : 'Preview Import'}
+          </button>
+        </div>
+
         {previewError && <p className="text-error">{previewError}</p>}
       </section>
 

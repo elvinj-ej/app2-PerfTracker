@@ -457,6 +457,18 @@ select, input, textarea {
   font-size: 13px;
 }
 
+.import-source-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.import-source-row .form-field {
+  flex: 1;
+  max-width: 360px;
+}
+
 .import-type-toggle {
   display: flex;
   gap: 20px;
