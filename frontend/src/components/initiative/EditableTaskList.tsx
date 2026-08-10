@@ -31,7 +31,7 @@ export function EditableTaskList({
   const { actor } = useActor()
   const queryClient = useQueryClient()
   const [newTitle, setNewTitle] = useState('')
-  const [newOwnerId, setNewOwnerId] = useState('')
+  const [newOwnerId, setNewOwnerId] = useState(actor.role === 'engineer' ? String(actor.engineerId) : '')
   const [newForecast, setNewForecast] = useState('')
   const [newStartDate, setNewStartDate] = useState('')
   const [newDeliveryDate, setNewDeliveryDate] = useState('')

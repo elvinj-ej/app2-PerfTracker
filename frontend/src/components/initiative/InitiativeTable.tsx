@@ -1,6 +1,18 @@
+import { Link } from 'react-router-dom'
 import { ProgressBar } from '../charts/ProgressBar'
 import { TimelineHealthBadge } from '../charts/TimelineHealthBadge'
-import type { InitiativeSummary } from '../../types/api'
+import type { InitiativeSummary, InitiativeType } from '../../types/api'
+
+function detailPath(type: InitiativeType, id: number): string {
+  switch (type) {
+    case 'KBI':
+      return `/kbis/${id}`
+    case 'PLATFORM':
+      return `/platform-initiatives/${id}`
+    case 'RECURRING_OPS':
+      return `/recurring-ops/${id}`
+  }
+}
 
 export function InitiativeTable({
   title,
@@ -35,7 +47,9 @@ export function InitiativeTable({
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <td>{row.title}</td>
+                  <td>
+                    <Link to={detailPath(row.type, row.id)}>{row.title}</Link>
+                  </td>
                   {showCategory && <td>{row.category_name ?? '—'}</td>}
                   <td>{row.status}</td>
                   <td>
