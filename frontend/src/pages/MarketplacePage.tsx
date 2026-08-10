@@ -37,6 +37,10 @@ interface MarketplaceCard {
   cadenceLabel: string
   detailPath: string
   engineerIds: number[]
+  /** Change Business/Change Platform Asks are typically delivered by several engineers,
+   * each owning different Outcomes, so being "assigned" doesn't mean closed to others -
+   * unlike a Run Operations Ask, which is normally one steady owner. */
+  allowsMultipleEngineers: boolean
   optIn: () => Promise<void>
   optOut: () => Promise<void>
   invalidateKey: string
@@ -66,6 +70,7 @@ export function MarketplacePage() {
       cadenceLabel: kbi.expected_delivery_date ? `Deliver by ${kbi.expected_delivery_date}` : 'No delivery date set',
       detailPath: `/kbis/${kbi.id}`,
       engineerIds: kbi.engineer_ids,
+      allowsMultipleEngineers: true,
       optIn: () => optInKbi(actor, kbi.id),
       optOut: () => optOutKbi(actor, kbi.id),
       invalidateKey: 'kbis',
@@ -79,6 +84,7 @@ export function MarketplacePage() {
       cadenceLabel: p.expected_delivery_date ? `Deliver by ${p.expected_delivery_date}` : 'No delivery date set',
       detailPath: `/platform-initiatives/${p.id}`,
       engineerIds: p.engineer_ids,
+      allowsMultipleEngineers: true,
       optIn: () => optInPlatformInitiative(actor, p.id),
       optOut: () => optOutPlatformInitiative(actor, p.id),
       invalidateKey: 'platform-initiatives',
@@ -92,6 +98,7 @@ export function MarketplacePage() {
       cadenceLabel: RECURRENCE_LABELS[r.recurrence_type] ?? r.recurrence_type,
       detailPath: `/recurring-ops/${r.id}`,
       engineerIds: r.engineer_ids,
+      allowsMultipleEngineers: false,
       optIn: () => optInRecurringOps(actor, r.id),
       optOut: () => optOutRecurringOps(actor, r.id),
       invalidateKey: 'recurring-ops',
@@ -111,7 +118,10 @@ export function MarketplacePage() {
 
   const filtered = cards.filter((c) => {
     if (typeFilter !== 'ALL' && c.type !== typeFilter) return false
-    if (openOnly && c.engineerIds.length > 0) return false
+    // "Unclaimed only" only hides Run Operations Asks once staffed - a Change
+    // Business/Change Platform Ask stays visible even after someone opts in, since it
+    // can take several engineers each delivering different Outcomes.
+    if (openOnly && !c.allowsMultipleEngineers && c.engineerIds.length > 0) return false
     if (normalizedKeyword) {
       const haystack = `${c.title} ${c.categoryName} ${c.priority ?? ''} ${c.cadenceLabel}`.toLowerCase()
       if (!haystack.includes(normalizedKeyword)) return false
@@ -143,7 +153,9 @@ export function MarketplacePage() {
         Every Ask across Run Operations, Change Business, and Change Platform in one place — pick
         up unclaimed work, or browse what teammates are already covering. Recurring Run Operations
         Asks stay in the marketplace as an ongoing responsibility rather than a one-off pickup — see
-        each card's cadence badge.
+        each card's cadence badge. A Change Business or Change Platform Ask can take several
+        engineers, each delivering a different Outcome — cards stay visible and open to join even
+        once someone else is already on it.
       </p>
 
       <div className="marketplace-filters">
@@ -172,7 +184,7 @@ export function MarketplacePage() {
         <span className="marketplace-filter-spacer" />
         <label className="marketplace-open-toggle">
           <input type="checkbox" checked={openOnly} onChange={(e) => setOpenOnly(e.target.checked)} />
-          Unclaimed only
+          Hide staffed Run Operations
         </label>
       </div>
 
@@ -196,9 +208,14 @@ export function MarketplacePage() {
               </div>
               <div className="marketplace-card-footer">
                 <span className="marketplace-card-engineers">
-                  {card.engineerIds.length === 0
-                    ? 'Unclaimed'
-                    : card.engineerIds.map(engineerName).join(', ')}
+                  {card.engineerIds.length === 0 ? (
+                    'Unclaimed'
+                  ) : (
+                    <>
+                      Already assigned: {card.engineerIds.map(engineerName).join(', ')}
+                      {card.allowsMultipleEngineers && ' — open to more'}
+                    </>
+                  )}
                 </span>
                 {actor.role === 'engineer' && (
                   <button

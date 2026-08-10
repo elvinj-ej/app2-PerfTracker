@@ -30,7 +30,9 @@ export function EditableTaskList({
 }: Props) {
   const { actor } = useActor()
   const queryClient = useQueryClient()
+  const [bulkMode, setBulkMode] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [bulkTitles, setBulkTitles] = useState('')
   const [newOwnerId, setNewOwnerId] = useState(actor.role === 'engineer' ? String(actor.engineerId) : '')
   const [newForecast, setNewForecast] = useState('')
   const [newStartDate, setNewStartDate] = useState('')
@@ -47,6 +49,17 @@ export function EditableTaskList({
     mutationFn: (taskId: number) => deleteTask(actor, taskId),
     onSuccess: invalidate,
   })
+
+  function buildPayload(title: string): TaskPayload {
+    return {
+      title,
+      owner_engineer_id: Number(newOwnerId),
+      forecast_duration_days: newForecast ? Number(newForecast) : null,
+      start_date: newStartDate || null,
+      delivery_date: newDeliveryDate || null,
+    }
+  }
+
   const createMutation = useMutation({
     mutationFn: (payload: TaskPayload) => createTask(actor, initiativeId, payload),
     onSuccess: () => {
@@ -58,6 +71,14 @@ export function EditableTaskList({
       setNewDeliveryDate('')
     },
   })
+  const bulkCreateMutation = useMutation({
+    mutationFn: (titles: string[]) => Promise.all(titles.map((title) => createTask(actor, initiativeId, buildPayload(title)))),
+    onSuccess: () => setBulkTitles(''),
+    // Even a partially-failed batch may have created some Outcomes already (Promise.all
+    // rejects on the first error, but earlier requests already landed) - always refresh
+    // so the list reflects whatever actually got created.
+    onSettled: invalidate,
+  })
   const reorderMutation = useMutation({
     mutationFn: (ids: number[]) => reorderTasks(actor, initiativeId, ids),
     onSuccess: invalidate,
@@ -68,6 +89,10 @@ export function EditableTaskList({
   })
 
   const sorted = [...tasks].sort((a, b) => a.sequence_order - b.sequence_order)
+  const bulkLines = bulkTitles
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
 
   function move(index: number, direction: -1 | 1) {
     const target = index + direction
@@ -90,13 +115,15 @@ export function EditableTaskList({
       <p className="text-muted">
         An Outcome answers the initiative's Ask. Delivery must land within two weeks of the start
         date, and both dates must fall on a Wednesday — split larger work into multiple Outcomes.
+        Working through a list of similar items (servers, UPS units, ...)? Use "Add multiple at
+        once" below to create one Outcome per item in a single step.
       </p>
       {generateMutation.isError && (
         <p className="text-error">{(generateMutation.error as Error).message}</p>
       )}
-      {(updateMutation.isError || createMutation.isError) && (
+      {(updateMutation.isError || createMutation.isError || bulkCreateMutation.isError) && (
         <p className="text-error">
-          {((updateMutation.error ?? createMutation.error) as Error).message}
+          {((updateMutation.error ?? createMutation.error ?? bulkCreateMutation.error) as Error).message}
         </p>
       )}
 
@@ -205,49 +232,95 @@ export function EditableTaskList({
         </div>
       )}
 
-      <div className="add-task-form">
-        <input placeholder="New outcome title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
-        <select value={newOwnerId} onChange={(e) => setNewOwnerId(e.target.value)}>
-          <option value="">Owner…</option>
-          {engineers.map((eng) => (
-            <option key={eng.id} value={eng.id}>
-              {eng.name}
-            </option>
-          ))}
-        </select>
-        {showForecast && (
-          <input
-            type="number"
-            placeholder="Forecast days"
-            className="input-narrow"
-            value={newForecast}
-            onChange={(e) => setNewForecast(e.target.value)}
-          />
-        )}
-        <label>
-          Start
-          <input type="date" value={newStartDate} onChange={(e) => setNewStartDate(e.target.value)} />
-        </label>
-        <label>
-          Delivery
-          <input type="date" value={newDeliveryDate} onChange={(e) => setNewDeliveryDate(e.target.value)} />
-        </label>
-        <button
-          className="btn btn-primary"
-          disabled={!newTitle || !newOwnerId}
-          onClick={() =>
-            createMutation.mutate({
-              title: newTitle,
-              owner_engineer_id: Number(newOwnerId),
-              forecast_duration_days: newForecast ? Number(newForecast) : null,
-              start_date: newStartDate || null,
-              delivery_date: newDeliveryDate || null,
-            })
-          }
-        >
-          Add Outcome
+      <div className="outcomes-toggle-row">
+        <button className="btn-link" onClick={() => setBulkMode(!bulkMode)}>
+          {bulkMode ? 'Add one at a time' : 'Add multiple at once'}
         </button>
       </div>
+
+      {bulkMode ? (
+        <div className="add-task-form add-task-form-bulk">
+          <textarea
+            className="bulk-outcome-input"
+            rows={4}
+            placeholder={'One Outcome per line, e.g.\nWIN-DC-01\nWIN-DC-02\nWIN-DC-03'}
+            value={bulkTitles}
+            onChange={(e) => setBulkTitles(e.target.value)}
+          />
+          <div className="add-task-form">
+            <select value={newOwnerId} onChange={(e) => setNewOwnerId(e.target.value)}>
+              <option value="">Owner…</option>
+              {engineers.map((eng) => (
+                <option key={eng.id} value={eng.id}>
+                  {eng.name}
+                </option>
+              ))}
+            </select>
+            {showForecast && (
+              <input
+                type="number"
+                placeholder="Forecast days (each)"
+                className="input-narrow"
+                value={newForecast}
+                onChange={(e) => setNewForecast(e.target.value)}
+              />
+            )}
+            <label>
+              Start
+              <input type="date" value={newStartDate} onChange={(e) => setNewStartDate(e.target.value)} />
+            </label>
+            <label>
+              Delivery
+              <input type="date" value={newDeliveryDate} onChange={(e) => setNewDeliveryDate(e.target.value)} />
+            </label>
+            <button
+              className="btn btn-primary"
+              disabled={bulkLines.length === 0 || !newOwnerId || bulkCreateMutation.isPending}
+              onClick={() => bulkCreateMutation.mutate(bulkLines)}
+            >
+              {bulkCreateMutation.isPending
+                ? 'Adding…'
+                : `Add ${bulkLines.length || ''} Outcome${bulkLines.length === 1 ? '' : 's'}`}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="add-task-form">
+          <input placeholder="New outcome title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+          <select value={newOwnerId} onChange={(e) => setNewOwnerId(e.target.value)}>
+            <option value="">Owner…</option>
+            {engineers.map((eng) => (
+              <option key={eng.id} value={eng.id}>
+                {eng.name}
+              </option>
+            ))}
+          </select>
+          {showForecast && (
+            <input
+              type="number"
+              placeholder="Forecast days"
+              className="input-narrow"
+              value={newForecast}
+              onChange={(e) => setNewForecast(e.target.value)}
+            />
+          )}
+          <label>
+            Start
+            <input type="date" value={newStartDate} onChange={(e) => setNewStartDate(e.target.value)} />
+          </label>
+          <label>
+            Delivery
+            <input type="date" value={newDeliveryDate} onChange={(e) => setNewDeliveryDate(e.target.value)} />
+          </label>
+          <button
+            className="btn btn-primary"
+            disabled={!newTitle || !newOwnerId}
+            onClick={() => createMutation.mutate(buildPayload(newTitle))}
+          >
+            Add Outcome
+          </button>
+        </div>
+      )}
     </section>
   )
 }

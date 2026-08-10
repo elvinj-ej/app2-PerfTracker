@@ -367,6 +367,16 @@ th {
   cursor: not-allowed;
 }
 
+.btn-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0;
+}
+
 .badge-inline {
   margin-left: 6px;
 }
@@ -417,6 +427,29 @@ select, input, textarea {
   margin-top: 14px;
   flex-wrap: wrap;
   align-items: center;
+}
+
+.outcomes-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.add-task-form-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 0;
+}
+
+.add-task-form-bulk .add-task-form {
+  margin-top: 0;
+}
+
+.bulk-outcome-input {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
 }
 
 .detail-grid {
