@@ -28,7 +28,7 @@ const PRIORITY_BADGE: Record<string, string> = {
 
 const PRIORITY_RANK: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
 
-interface MarketplaceCard {
+interface MarketplaceRow {
   key: string
   type: InitiativeType
   title: string
@@ -37,10 +37,6 @@ interface MarketplaceCard {
   cadenceLabel: string
   detailPath: string
   engineerIds: number[]
-  /** Change Business/Change Platform Asks are typically delivered by several engineers,
-   * each owning different Outcomes, so being "assigned" doesn't mean closed to others -
-   * unlike a Run Operations Ask, which is normally one steady owner. */
-  allowsMultipleEngineers: boolean
   optIn: () => Promise<void>
   optOut: () => Promise<void>
   invalidateKey: string
@@ -60,8 +56,11 @@ export function MarketplacePage() {
 
   const engineerName = (id: number) => engineers?.find((e) => e.id === id)?.name ?? `Engineer #${id}`
 
-  const cards: MarketplaceCard[] = useMemo(() => {
-    const kbiCards: MarketplaceCard[] = (kbisQuery.data ?? []).map((kbi) => ({
+  // Every Ask type - Run Operations included - can be delivered by several engineers,
+  // each owning a different Outcome, so being assigned to one doesn't mean closed to
+  // others: it's indicated on the row, not hidden.
+  const rows: MarketplaceRow[] = useMemo(() => {
+    const kbiRows: MarketplaceRow[] = (kbisQuery.data ?? []).map((kbi) => ({
       key: `KBI-${kbi.id}`,
       type: 'KBI',
       title: kbi.title,
@@ -70,12 +69,11 @@ export function MarketplacePage() {
       cadenceLabel: kbi.expected_delivery_date ? `Deliver by ${kbi.expected_delivery_date}` : 'No delivery date set',
       detailPath: `/kbis/${kbi.id}`,
       engineerIds: kbi.engineer_ids,
-      allowsMultipleEngineers: true,
       optIn: () => optInKbi(actor, kbi.id),
       optOut: () => optOutKbi(actor, kbi.id),
       invalidateKey: 'kbis',
     }))
-    const platformCards: MarketplaceCard[] = (platformQuery.data ?? []).map((p) => ({
+    const platformRows: MarketplaceRow[] = (platformQuery.data ?? []).map((p) => ({
       key: `PLATFORM-${p.id}`,
       type: 'PLATFORM',
       title: p.title,
@@ -84,12 +82,11 @@ export function MarketplacePage() {
       cadenceLabel: p.expected_delivery_date ? `Deliver by ${p.expected_delivery_date}` : 'No delivery date set',
       detailPath: `/platform-initiatives/${p.id}`,
       engineerIds: p.engineer_ids,
-      allowsMultipleEngineers: true,
       optIn: () => optInPlatformInitiative(actor, p.id),
       optOut: () => optOutPlatformInitiative(actor, p.id),
       invalidateKey: 'platform-initiatives',
     }))
-    const runOpsCards: MarketplaceCard[] = (runOpsQuery.data ?? []).map((r) => ({
+    const runOpsRows: MarketplaceRow[] = (runOpsQuery.data ?? []).map((r) => ({
       key: `RECURRING_OPS-${r.id}`,
       type: 'RECURRING_OPS',
       title: r.title,
@@ -98,13 +95,12 @@ export function MarketplacePage() {
       cadenceLabel: RECURRENCE_LABELS[r.recurrence_type] ?? r.recurrence_type,
       detailPath: `/recurring-ops/${r.id}`,
       engineerIds: r.engineer_ids,
-      allowsMultipleEngineers: false,
       optIn: () => optInRecurringOps(actor, r.id),
       optOut: () => optOutRecurringOps(actor, r.id),
       invalidateKey: 'recurring-ops',
     }))
 
-    return [...kbiCards, ...platformCards, ...runOpsCards].sort((a, b) => {
+    return [...kbiRows, ...platformRows, ...runOpsRows].sort((a, b) => {
       const claimedDiff = Number(a.engineerIds.length > 0) - Number(b.engineerIds.length > 0)
       if (claimedDiff !== 0) return claimedDiff
       const rankDiff = (PRIORITY_RANK[a.priority ?? ''] ?? 9) - (PRIORITY_RANK[b.priority ?? ''] ?? 9)
@@ -116,29 +112,26 @@ export function MarketplacePage() {
 
   const normalizedKeyword = keyword.trim().toLowerCase()
 
-  const filtered = cards.filter((c) => {
-    if (typeFilter !== 'ALL' && c.type !== typeFilter) return false
-    // "Unclaimed only" only hides Run Operations Asks once staffed - a Change
-    // Business/Change Platform Ask stays visible even after someone opts in, since it
-    // can take several engineers each delivering different Outcomes.
-    if (openOnly && !c.allowsMultipleEngineers && c.engineerIds.length > 0) return false
+  const filtered = rows.filter((r) => {
+    if (typeFilter !== 'ALL' && r.type !== typeFilter) return false
+    if (openOnly && r.engineerIds.length > 0) return false
     if (normalizedKeyword) {
-      const haystack = `${c.title} ${c.categoryName} ${c.priority ?? ''} ${c.cadenceLabel}`.toLowerCase()
+      const haystack = `${r.title} ${r.categoryName} ${r.priority ?? ''} ${r.cadenceLabel}`.toLowerCase()
       if (!haystack.includes(normalizedKeyword)) return false
     }
     return true
   })
 
   const optInMutation = useMutation({
-    mutationFn: (card: MarketplaceCard) => card.optIn(),
-    onSuccess: (_, card) => {
-      queryClient.invalidateQueries({ queryKey: [card.invalidateKey] })
+    mutationFn: (row: MarketplaceRow) => row.optIn(),
+    onSuccess: (_, row) => {
+      queryClient.invalidateQueries({ queryKey: [row.invalidateKey] })
     },
   })
   const optOutMutation = useMutation({
-    mutationFn: (card: MarketplaceCard) => card.optOut(),
-    onSuccess: (_, card) => {
-      queryClient.invalidateQueries({ queryKey: [card.invalidateKey] })
+    mutationFn: (row: MarketplaceRow) => row.optOut(),
+    onSuccess: (_, row) => {
+      queryClient.invalidateQueries({ queryKey: [row.invalidateKey] })
     },
   })
 
@@ -151,11 +144,9 @@ export function MarketplacePage() {
       </div>
       <p className="text-muted marketplace-intro">
         Every Ask across Run Operations, Change Business, and Change Platform in one place — pick
-        up unclaimed work, or browse what teammates are already covering. Recurring Run Operations
-        Asks stay in the marketplace as an ongoing responsibility rather than a one-off pickup — see
-        each card's cadence badge. A Change Business or Change Platform Ask can take several
-        engineers, each delivering a different Outcome — cards stay visible and open to join even
-        once someone else is already on it.
+        up unclaimed work, or browse what teammates are already covering. Any Ask can take several
+        engineers, each delivering a different Outcome, so a row stays here — marked "Already
+        assigned" — even once someone else has opted in.
       </p>
 
       <div className="marketplace-filters">
@@ -184,53 +175,66 @@ export function MarketplacePage() {
         <span className="marketplace-filter-spacer" />
         <label className="marketplace-open-toggle">
           <input type="checkbox" checked={openOnly} onChange={(e) => setOpenOnly(e.target.checked)} />
-          Hide staffed Run Operations
+          Unclaimed only
         </label>
       </div>
 
       {isLoading && <p>Loading…</p>}
       {!isLoading && filtered.length === 0 && <p className="text-muted">Nothing matches these filters.</p>}
 
-      <div className="marketplace-grid">
-        {filtered.map((card) => {
-          const isOptedIn = actor.role === 'engineer' && card.engineerIds.includes(actor.engineerId)
-          return (
-            <section key={card.key} className="card marketplace-card">
-              <div className="marketplace-card-header">
-                <Link to={card.detailPath} className="marketplace-card-title">
-                  {card.title}
-                </Link>
-                {card.priority && <span className={`badge ${PRIORITY_BADGE[card.priority] ?? 'badge-gray'}`}>{card.priority}</span>}
-              </div>
-              <div className="marketplace-card-meta">
-                <span className="badge badge-gray">{card.categoryName}</span>
-                <span>{card.cadenceLabel}</span>
-              </div>
-              <div className="marketplace-card-footer">
-                <span className="marketplace-card-engineers">
-                  {card.engineerIds.length === 0 ? (
-                    'Unclaimed'
-                  ) : (
-                    <>
-                      Already assigned: {card.engineerIds.map(engineerName).join(', ')}
-                      {card.allowsMultipleEngineers && ' — open to more'}
-                    </>
-                  )}
-                </span>
-                {actor.role === 'engineer' && (
-                  <button
-                    className={isOptedIn ? 'btn btn-secondary' : 'btn btn-primary'}
-                    disabled={optInMutation.isPending || optOutMutation.isPending}
-                    onClick={() => (isOptedIn ? optOutMutation.mutate(card) : optInMutation.mutate(card))}
-                  >
-                    {isOptedIn ? 'Opt Out' : "I'll take this"}
-                  </button>
-                )}
-              </div>
-            </section>
-          )
-        })}
-      </div>
+      {filtered.length > 0 && (
+        <section className="card">
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ask</th>
+                  <th>Category</th>
+                  <th>Priority</th>
+                  <th>Cadence / Delivery</th>
+                  <th>Assigned</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((row) => {
+                  const isOptedIn = actor.role === 'engineer' && row.engineerIds.includes(actor.engineerId)
+                  return (
+                    <tr key={row.key}>
+                      <td className="marketplace-ask-cell">
+                        <Link to={row.detailPath}>{row.title}</Link>
+                      </td>
+                      <td>{row.categoryName}</td>
+                      <td>
+                        {row.priority && (
+                          <span className={`badge ${PRIORITY_BADGE[row.priority] ?? 'badge-gray'}`}>{row.priority}</span>
+                        )}
+                      </td>
+                      <td>{row.cadenceLabel}</td>
+                      <td className="marketplace-assigned-cell">
+                        {row.engineerIds.length === 0
+                          ? 'Unclaimed'
+                          : `Already assigned: ${row.engineerIds.map(engineerName).join(', ')}`}
+                      </td>
+                      <td>
+                        {actor.role === 'engineer' && (
+                          <button
+                            className={isOptedIn ? 'btn btn-secondary' : 'btn btn-primary'}
+                            disabled={optInMutation.isPending || optOutMutation.isPending}
+                            onClick={() => (isOptedIn ? optOutMutation.mutate(row) : optInMutation.mutate(row))}
+                          >
+                            {isOptedIn ? 'Opt Out' : "I'll take this"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
