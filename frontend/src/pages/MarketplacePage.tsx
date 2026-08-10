@@ -47,6 +47,7 @@ export function MarketplacePage() {
   const queryClient = useQueryClient()
   const [typeFilter, setTypeFilter] = useState<InitiativeType | 'ALL'>('ALL')
   const [openOnly, setOpenOnly] = useState(true)
+  const [keyword, setKeyword] = useState('')
 
   const { data: engineers } = useQuery({ queryKey: ['engineers'], queryFn: () => listEngineers(actor) })
   const kbisQuery = useQuery({ queryKey: ['kbis'], queryFn: () => listKbis(actor) })
@@ -106,9 +107,15 @@ export function MarketplacePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kbisQuery.data, platformQuery.data, runOpsQuery.data, actor])
 
+  const normalizedKeyword = keyword.trim().toLowerCase()
+
   const filtered = cards.filter((c) => {
     if (typeFilter !== 'ALL' && c.type !== typeFilter) return false
     if (openOnly && c.engineerIds.length > 0) return false
+    if (normalizedKeyword) {
+      const haystack = `${c.title} ${c.categoryName} ${c.priority ?? ''} ${c.cadenceLabel}`.toLowerCase()
+      if (!haystack.includes(normalizedKeyword)) return false
+    }
     return true
   })
 
@@ -155,6 +162,13 @@ export function MarketplacePage() {
             {meta.label}
           </button>
         ))}
+        <input
+          type="search"
+          className="marketplace-keyword-input"
+          placeholder="Filter by keyword…"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+        />
         <span className="marketplace-filter-spacer" />
         <label className="marketplace-open-toggle">
           <input type="checkbox" checked={openOnly} onChange={(e) => setOpenOnly(e.target.checked)} />

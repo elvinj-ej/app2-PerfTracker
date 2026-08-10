@@ -32,6 +32,10 @@ export function createKbi(actor: Actor, payload: KbiPayload): Promise<Kbi> {
   return apiFetch<Kbi>('/api/kbis', actor, { method: 'POST', body: JSON.stringify(payload) })
 }
 
+export function updateKbi(actor: Actor, id: number, payload: Partial<KbiPayload>): Promise<Kbi> {
+  return apiFetch<Kbi>(`/api/kbis/${id}`, actor, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
 export function optInKbi(actor: Actor, id: number, engineerId?: number): Promise<void> {
   return apiFetch<void>(`/api/kbis/${id}/opt-in`, actor, {
     method: 'POST',

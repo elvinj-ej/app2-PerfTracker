@@ -30,6 +30,17 @@ export function createPlatformInitiative(actor: Actor, payload: PlatformInitiati
   })
 }
 
+export function updatePlatformInitiative(
+  actor: Actor,
+  id: number,
+  payload: Partial<PlatformInitiativePayload>,
+): Promise<PlatformInitiative> {
+  return apiFetch<PlatformInitiative>(`/api/platform-initiatives/${id}`, actor, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function optInPlatformInitiative(actor: Actor, id: number, engineerId?: number): Promise<void> {
   return apiFetch<void>(`/api/platform-initiatives/${id}/opt-in`, actor, {
     method: 'POST',

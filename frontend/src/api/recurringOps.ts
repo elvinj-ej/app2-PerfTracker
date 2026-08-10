@@ -30,6 +30,14 @@ export function createRecurringOps(actor: Actor, payload: RecurringOpsPayload): 
   return apiFetch<RecurringOps>('/api/recurring-ops', actor, { method: 'POST', body: JSON.stringify(payload) })
 }
 
+export function updateRecurringOps(
+  actor: Actor,
+  id: number,
+  payload: Partial<RecurringOpsPayload>,
+): Promise<RecurringOps> {
+  return apiFetch<RecurringOps>(`/api/recurring-ops/${id}`, actor, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
 export function optInRecurringOps(actor: Actor, id: number, engineerId?: number): Promise<void> {
   return apiFetch<void>(`/api/recurring-ops/${id}/opt-in`, actor, {
     method: 'POST',
