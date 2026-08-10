@@ -6,6 +6,7 @@ import { EngineerDashboardPage } from './pages/EngineerDashboardPage'
 import { ImportInitiativePage } from './pages/ImportInitiativePage'
 import { KbiCatalogPage } from './pages/KbiCatalogPage'
 import { KbiDetailPage } from './pages/KbiDetailPage'
+import { MarketplacePage } from './pages/MarketplacePage'
 import { MonthlyReportPage } from './pages/MonthlyReportPage'
 import { PlatformInitiativeCatalogPage } from './pages/PlatformInitiativeCatalogPage'
 import { PlatformInitiativeDetailPage } from './pages/PlatformInitiativeDetailPage'
@@ -25,6 +26,7 @@ function App() {
           <main className="app-main">
             <Routes>
               <Route path="/" element={<EngineerDashboardPage />} />
+              <Route path="/marketplace" element={<MarketplacePage />} />
               <Route path="/team" element={<TeamSummaryPage />} />
               <Route path="/reports/monthly" element={<MonthlyReportPage />} />
               <Route path="/kbis" element={<KbiCatalogPage />} />

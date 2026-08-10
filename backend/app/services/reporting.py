@@ -9,7 +9,7 @@ from datetime import date
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Engineer, Initiative, PlatformInitiativeDetail, RecurringOpsDetail, Task, TimeEntry
+from app.models import Engineer, Initiative, KbiDetail, PlatformInitiativeDetail, RecurringOpsDetail, Task, TimeEntry
 from app.models.enums import InitiativeType
 from app.schemas.reporting import (
     CategoryHours,
@@ -45,6 +45,8 @@ def _task_hours_map(db: Session, task_ids: list[int]) -> dict[int, float]:
 
 
 def _category_name(initiative: Initiative) -> str | None:
+    if initiative.type == InitiativeType.KBI and initiative.kbi_detail:
+        return initiative.kbi_detail.category.name
     if initiative.type == InitiativeType.PLATFORM and initiative.platform_detail:
         return initiative.platform_detail.category.name
     if initiative.type == InitiativeType.RECURRING_OPS and initiative.recurring_ops_detail:
@@ -122,6 +124,7 @@ def _load_initiatives(db: Session, initiative_ids: list[int]) -> list[Initiative
         .options(
             selectinload(Initiative.tasks),
             selectinload(Initiative.upgrade_units),
+            selectinload(Initiative.kbi_detail).selectinload(KbiDetail.category),
             selectinload(Initiative.platform_detail).selectinload(PlatformInitiativeDetail.category),
             selectinload(Initiative.recurring_ops_detail).selectinload(RecurringOpsDetail.category),
         )
@@ -200,6 +203,7 @@ def build_team_summary(db: Session) -> TeamSummary:
         .options(
             selectinload(Initiative.tasks),
             selectinload(Initiative.upgrade_units),
+            selectinload(Initiative.kbi_detail).selectinload(KbiDetail.category),
             selectinload(Initiative.platform_detail).selectinload(PlatformInitiativeDetail.category),
             selectinload(Initiative.recurring_ops_detail).selectinload(RecurringOpsDetail.category),
         )
@@ -285,6 +289,7 @@ def build_monthly_report(db: Session, month: str) -> MonthlyReport:
         .options(
             selectinload(Initiative.tasks).selectinload(Task.owner),
             selectinload(Initiative.upgrade_units),
+            selectinload(Initiative.kbi_detail).selectinload(KbiDetail.category),
             selectinload(Initiative.platform_detail).selectinload(PlatformInitiativeDetail.category),
             selectinload(Initiative.recurring_ops_detail).selectinload(RecurringOpsDetail.category),
         )

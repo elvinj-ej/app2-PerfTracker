@@ -39,9 +39,9 @@ function NewPlatformInitiativeForm() {
 
   return (
     <section className="card">
-      <h2>New Platform Initiative</h2>
+      <h2>New Change Platform</h2>
       <div className="form-grid">
-        <FormField label="Title" hint="What the initiative is about">
+        <FormField label="Ask" hint="What needs to be delivered">
           <input placeholder="e.g. Q3 SQL Server Fleet Upgrade" value={title} onChange={(e) => setTitle(e.target.value)} />
         </FormField>
         <FormField label="Business Goal" hint="The outcome this needs to achieve">
@@ -78,7 +78,7 @@ export function PlatformInitiativeCatalogPage() {
   return (
     <div className="page">
       <div className="page-toolbar">
-        <h1 className="page-title">Platform Initiatives</h1>
+        <h1 className="page-title">Change Platform</h1>
       </div>
 
       <NewPlatformInitiativeForm />
@@ -89,7 +89,7 @@ export function PlatformInitiativeCatalogPage() {
           <table>
             <thead>
               <tr>
-                <th>Title</th>
+                <th>Ask</th>
                 <th>Category</th>
                 <th>Delivery Date</th>
                 <th>Status</th>

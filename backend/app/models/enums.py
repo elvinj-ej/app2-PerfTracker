@@ -46,10 +46,12 @@ class TaskStatus(str, enum.Enum):
 
 
 class RecurrenceType(str, enum.Enum):
-    ANNUAL = "ANNUAL"
-    QUARTERLY = "QUARTERLY"
-    MONTHLY = "MONTHLY"
+    DAILY = "DAILY"
     WEEKLY = "WEEKLY"
+    MONTHLY = "MONTHLY"
+    QUARTERLY = "QUARTERLY"
+    HALF_YEARLY = "HALF_YEARLY"
+    ANNUAL = "ANNUAL"
     AD_HOC = "AD_HOC"
 
 

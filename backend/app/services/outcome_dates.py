@@ -41,6 +41,24 @@ def validate_delivery_span(start_date: date | None, delivery_date: date | None) 
             )
 
 
+def validate_within_ask_timeline(
+    outcome_start: date | None,
+    outcome_delivery: date | None,
+    ask_start: date | None,
+    ask_delivery: date | None,
+) -> None:
+    """An Outcome exists to deliver a slice of its parent Ask, so it can't be scheduled
+    outside the Ask's own window: not before the Ask starts, and never delivered after
+    the Ask is due. Either bound is skipped if the Ask itself doesn't have that date set.
+    """
+    if outcome_start is not None and ask_start is not None and outcome_start < ask_start:
+        raise OutcomeDateError(f"start_date can't be before the Ask's own start date ({ask_start.isoformat()})")
+    if outcome_delivery is not None and ask_delivery is not None and outcome_delivery > ask_delivery:
+        raise OutcomeDateError(
+            f"delivery_date can't be later than the Ask's own delivery date ({ask_delivery.isoformat()})"
+        )
+
+
 def next_wednesday_on_or_after(d: date) -> date:
     return d + timedelta(days=(_WEDNESDAY - d.weekday()) % 7)
 

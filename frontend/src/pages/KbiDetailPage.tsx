@@ -40,9 +40,11 @@ export function KbiDetailPage() {
       <section className="card">
         <h2>Details</h2>
         <dl className="detail-grid">
+          <dt>Category</dt>
+          <dd>{kbi.category.name}</dd>
           <dt>Business Goal</dt>
           <dd>{kbi.business_goal ?? '—'}</dd>
-          <dt>The Ask</dt>
+          <dt>Additional Ask Detail</dt>
           <dd>{kbi.ask ?? '—'}</dd>
           <dt>Jira Number</dt>
           <dd>{kbi.jira_number ?? '—'}</dd>

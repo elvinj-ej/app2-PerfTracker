@@ -34,15 +34,15 @@ export function TeamSummaryPage() {
           </section>
 
           <InitiativeTable
-            title="Key Business Initiatives"
+            title="Change Business"
             rows={data.kbis}
-            emptyMessage="No Key Business Initiatives yet."
+            emptyMessage="No Change Business yet."
           />
           <InitiativeTable
-            title="Platform Initiatives"
+            title="Change Platform"
             rows={data.platform_initiatives}
             showCategory
-            emptyMessage="No Platform Initiatives yet."
+            emptyMessage="No Change Platform yet."
           />
           <InitiativeTable
             title="Run Operations"

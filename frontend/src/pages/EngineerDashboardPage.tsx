@@ -56,15 +56,15 @@ export function EngineerDashboardPage() {
       {dashboardQuery.data && (
         <>
           <InitiativeTable
-            title="Key Business Initiatives"
+            title="Change Business"
             rows={dashboardQuery.data.kbis}
-            emptyMessage="Not opted into any Key Business Initiatives yet."
+            emptyMessage="Not opted into any Change Business yet."
           />
           <InitiativeTable
-            title="Platform Initiatives"
+            title="Change Platform"
             rows={dashboardQuery.data.platform_initiatives}
             showCategory
-            emptyMessage="Not opted into any Platform Initiatives yet."
+            emptyMessage="Not opted into any Change Platform yet."
           />
           <InitiativeTable
             title="Run Operations"

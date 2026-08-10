@@ -119,13 +119,13 @@ export function MonthlyReportPage() {
 
       {reportQuery.data && (
         <>
-          <h2 className="section-heading">Key Business Initiatives</h2>
+          <h2 className="section-heading">Change Business</h2>
           {reportQuery.data.kbis.length === 0 && <p className="text-muted">None.</p>}
           {reportQuery.data.kbis.map((initiative) => (
             <MonthlyInitiativeCard key={initiative.id} initiative={initiative} />
           ))}
 
-          <h2 className="section-heading">Platform Initiatives</h2>
+          <h2 className="section-heading">Change Platform</h2>
           {reportQuery.data.platform_initiatives.length === 0 && <p className="text-muted">None.</p>}
           {reportQuery.data.platform_initiatives.map((initiative) => (
             <MonthlyInitiativeCard key={initiative.id} initiative={initiative} showCategory />

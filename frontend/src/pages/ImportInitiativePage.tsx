@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { previewJiraXmlImport, previewWordDocImport } from '../api/initiativeImport'
-import { createKbi } from '../api/kbis'
+import { createKbi, listKbiCategories } from '../api/kbis'
 import { createPlatformInitiative, listPlatformCategories } from '../api/platformInitiatives'
 import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
@@ -52,11 +52,17 @@ export function ImportInitiativePage() {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [createdLink, setCreatedLink] = useState<{ to: string; label: string } | null>(null)
 
-  const { data: categories } = useQuery({
+  const { data: kbiCategories } = useQuery({
+    queryKey: ['kbi-categories'],
+    queryFn: () => listKbiCategories(actor),
+    enabled: targetType === 'KBI',
+  })
+  const { data: platformCategories } = useQuery({
     queryKey: ['platform-categories'],
     queryFn: () => listPlatformCategories(actor),
     enabled: targetType === 'PLATFORM',
   })
+  const categories = targetType === 'KBI' ? kbiCategories : platformCategories
 
   function handlePreviewSuccess(data: JiraImportPreview) {
     setPreview(data)
@@ -93,6 +99,9 @@ export function ImportInitiativePage() {
         priority: form.priority || null,
         status: form.status,
       }
+      if (!form.category_id) {
+        throw new Error(`Choose a category for the ${targetType === 'KBI' ? 'Change Business' : 'Change Platform'} Ask.`)
+      }
       if (targetType === 'KBI') {
         return {
           type: 'KBI' as const,
@@ -101,11 +110,9 @@ export function ImportInitiativePage() {
             jira_number: form.jira_number || null,
             complexity: form.complexity || null,
             ask: form.ask || null,
+            category_id: Number(form.category_id),
           }),
         }
-      }
-      if (!form.category_id) {
-        throw new Error('Choose a category for the Platform Initiative.')
       }
       return {
         type: 'PLATFORM' as const,
@@ -115,10 +122,10 @@ export function ImportInitiativePage() {
     onSuccess: ({ type, result }) => {
       if (type === 'KBI') {
         queryClient.invalidateQueries({ queryKey: ['kbis'] })
-        setCreatedLink({ to: `/kbis/${result.id}`, label: 'View the new Key Business Initiative' })
+        setCreatedLink({ to: `/kbis/${result.id}`, label: 'View the new Change Business' })
       } else {
         queryClient.invalidateQueries({ queryKey: ['platform-initiatives'] })
-        setCreatedLink({ to: `/platform-initiatives/${result.id}`, label: 'View the new Platform Initiative' })
+        setCreatedLink({ to: `/platform-initiatives/${result.id}`, label: 'View the new Change Platform' })
       }
       setXmlFile(null)
       setWordFile(null)
@@ -144,9 +151,8 @@ export function ImportInitiativePage() {
       <section className="card">
         <p className="text-muted">
           Upload a Jira export to pre-fill a new initiative. Either format works. You'll review
-          every field, choose whether it becomes a Key Business Initiative or a Platform
-          Initiative, and edit anything before it's created — nothing is saved until you click
-          Create.
+          every field, choose whether it becomes a Change Business or a Change Platform Ask,
+          and edit anything before it's created — nothing is saved until you click Create.
         </p>
 
         <div className="import-source-row">
@@ -220,25 +226,31 @@ export function ImportInitiativePage() {
                 type="radio"
                 name="target-type"
                 checked={targetType === 'KBI'}
-                onChange={() => setTargetType('KBI')}
+                onChange={() => {
+                  setTargetType('KBI')
+                  setForm({ ...form, category_id: '' })
+                }}
               />
-              Key Business Initiative
+              Change Business
             </label>
             <label>
               <input
                 type="radio"
                 name="target-type"
                 checked={targetType === 'PLATFORM'}
-                onChange={() => setTargetType('PLATFORM')}
+                onChange={() => {
+                  setTargetType('PLATFORM')
+                  setForm({ ...form, category_id: '' })
+                }}
               />
-              Platform Initiative
+              Change Platform
             </label>
           </div>
 
           <div className="form-grid">
-            <FormField label="Title" hint="What the initiative is about">
+            <FormField label="Ask" hint="What needs to be delivered">
               <input
-                placeholder="Title"
+                placeholder="Ask"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
               />
@@ -260,9 +272,9 @@ export function ImportInitiativePage() {
               />
             </FormField>
             {targetType === 'KBI' && (
-              <FormField label="The Ask" hint="What the Cloud Team needs to provide">
+              <FormField label="Additional Ask Detail" hint="Optional - more on what the Cloud Team needs to provide">
                 <input
-                  placeholder="The Ask"
+                  placeholder="Additional detail"
                   value={form.ask}
                   onChange={(e) => setForm({ ...form, ask: e.target.value })}
                 />
@@ -299,21 +311,22 @@ export function ImportInitiativePage() {
                 </select>
               </FormField>
             )}
-            {targetType === 'PLATFORM' && (
-              <FormField label="Category" hint="Upgrade type, improvement, automation, etc.">
-                <select
-                  value={form.category_id}
-                  onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                >
-                  <option value="">Category…</option>
-                  {(categories ?? []).map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            )}
+            <FormField
+              label="Category"
+              hint={targetType === 'KBI' ? 'Which Change Business area this belongs to' : 'Upgrade type, improvement, automation, etc.'}
+            >
+              <select
+                value={form.category_id}
+                onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+              >
+                <option value="">Category…</option>
+                {(categories ?? []).map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
             <FormField label="Status" hint="Current state of the initiative">
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                 <option value="DRAFT">Draft</option>
@@ -340,12 +353,12 @@ export function ImportInitiativePage() {
 
           <button
             className="btn btn-primary"
-            disabled={!form.title || createMutation.isPending}
+            disabled={!form.title || !form.category_id || createMutation.isPending}
             onClick={() => createMutation.mutate()}
           >
             {createMutation.isPending
               ? 'Creating…'
-              : `Create ${targetType === 'KBI' ? 'Key Business Initiative' : 'Platform Initiative'}`}
+              : `Create ${targetType === 'KBI' ? 'Change Business' : 'Change Platform'}`}
           </button>
         </section>
       )}

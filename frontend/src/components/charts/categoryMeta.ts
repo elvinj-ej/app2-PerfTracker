@@ -7,8 +7,8 @@ export interface CategoryMeta {
 }
 
 export const CATEGORY_META: CategoryMeta[] = [
-  { type: 'KBI', label: 'Key Business Initiatives', varName: '--series-kbi' },
-  { type: 'PLATFORM', label: 'Platform Initiatives', varName: '--series-platform' },
+  { type: 'KBI', label: 'Change Business', varName: '--series-kbi' },
+  { type: 'PLATFORM', label: 'Change Platform', varName: '--series-platform' },
   { type: 'RECURRING_OPS', label: 'Run Operations', varName: '--series-recurring' },
 ]
 

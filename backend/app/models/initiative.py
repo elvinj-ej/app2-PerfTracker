@@ -13,6 +13,24 @@ from app.models.enums import (
 )
 
 
+class KbiCategory(Base):
+    """Manager-editable lookup of Change Business categories (Amplify, Clark, MFG, etc.),
+    mirroring PlatformInitiativeCategory/RecurringOpsCategory - same rationale: runtime-
+    editable rather than a hardcoded enum so the manager can add new categories without a
+    code deploy.
+    """
+
+    __tablename__ = "kbi_categories"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    details = relationship("KbiDetail", back_populates="category")
+
+
 class PlatformInitiativeCategory(Base):
     """Manager-editable lookup of Platform Initiative categories (upgrades, improvements, etc.).
 
@@ -77,6 +95,9 @@ class Initiative(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+    kbi_detail = relationship(
+        "KbiDetail", back_populates="initiative", uselist=False, cascade="all, delete-orphan"
+    )
     platform_detail = relationship(
         "PlatformInitiativeDetail", back_populates="initiative", uselist=False, cascade="all, delete-orphan"
     )
@@ -86,6 +107,16 @@ class Initiative(Base):
     tasks = relationship("Task", back_populates="initiative", cascade="all, delete-orphan")
     upgrade_units = relationship("UpgradeUnit", back_populates="initiative", cascade="all, delete-orphan")
     engineer_links = relationship("InitiativeEngineer", back_populates="initiative", cascade="all, delete-orphan")
+
+
+class KbiDetail(Base):
+    __tablename__ = "kbi_details"
+
+    initiative_id: Mapped[int] = mapped_column(ForeignKey("initiatives.id"), primary_key=True)
+    category_id: Mapped[int] = mapped_column(ForeignKey("kbi_categories.id"), nullable=False)
+
+    initiative = relationship("Initiative", back_populates="kbi_detail")
+    category = relationship("KbiCategory", back_populates="details")
 
 
 class PlatformInitiativeDetail(Base):

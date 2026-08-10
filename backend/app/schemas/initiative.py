@@ -9,6 +9,7 @@ from app.models.enums import (
     Priority,
     RecurrenceType,
 )
+from app.schemas.kbi_category import KbiCategoryRead
 from app.schemas.platform_category import PlatformInitiativeCategoryRead
 from app.schemas.recurring_ops_category import RecurringOpsCategoryRead
 
@@ -42,10 +43,12 @@ class InitiativeUpdateBase(BaseModel):
 
 class KbiCreate(InitiativeBase):
     ask: str | None = None
+    category_id: int
 
 
 class KbiUpdate(InitiativeUpdateBase):
     ask: str | None = None
+    category_id: int | None = None
 
 
 class KbiRead(InitiativeBase):
@@ -54,6 +57,7 @@ class KbiRead(InitiativeBase):
     id: int
     type: InitiativeType
     ask: str | None = None
+    category: KbiCategoryRead
     engineer_ids: list[int] = []
 
 
@@ -84,6 +88,7 @@ class RecurringOpsBase(BaseModel):
     title: str
     description: str | None = None
     status: InitiativeStatus = InitiativeStatus.OPEN
+    priority: Priority | None = None
     category_id: int
     recurrence_type: RecurrenceType
     recurrence_interval: int = 1
@@ -99,6 +104,7 @@ class RecurringOpsUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     status: InitiativeStatus | None = None
+    priority: Priority | None = None
     category_id: int | None = None
     recurrence_type: RecurrenceType | None = None
     recurrence_interval: int | None = None
@@ -114,6 +120,7 @@ class RecurringOpsRead(BaseModel):
     title: str
     description: str | None
     status: InitiativeStatus
+    priority: Priority | None
     category: RecurringOpsCategoryRead
     recurrence_type: RecurrenceType
     recurrence_interval: int

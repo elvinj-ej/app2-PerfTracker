@@ -2,6 +2,8 @@ from app.models.ai_breakdown_request import AiBreakdownRequest
 from app.models.engineer import Engineer
 from app.models.initiative import (
     Initiative,
+    KbiCategory,
+    KbiDetail,
     PlatformInitiativeCategory,
     PlatformInitiativeDetail,
     RecurringOpsCategory,
@@ -17,6 +19,8 @@ __all__ = [
     "Engineer",
     "Initiative",
     "InitiativeEngineer",
+    "KbiCategory",
+    "KbiDetail",
     "PlatformInitiativeCategory",
     "PlatformInitiativeDetail",
     "RecurringOpsCategory",

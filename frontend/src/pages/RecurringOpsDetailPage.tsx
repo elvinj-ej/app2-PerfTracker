@@ -47,6 +47,8 @@ export function RecurringOpsDetailPage() {
           <dd>{item.description ?? '—'}</dd>
           <dt>Category</dt>
           <dd>{item.category.name}</dd>
+          <dt>Priority</dt>
+          <dd>{item.priority ?? '—'}</dd>
           <dt>Recurrence</dt>
           <dd>
             {item.recurrence_type}

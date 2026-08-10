@@ -1,16 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { createKbi, listKbis } from '../api/kbis'
+import { createKbi, listKbiCategories, listKbis } from '../api/kbis'
 import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
 
 function NewKbiForm() {
   const { actor } = useActor()
   const queryClient = useQueryClient()
+  const { data: categories } = useQuery({
+    queryKey: ['kbi-categories'],
+    queryFn: () => listKbiCategories(actor),
+  })
   const [title, setTitle] = useState('')
   const [businessGoal, setBusinessGoal] = useState('')
   const [ask, setAsk] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [jira, setJira] = useState('')
   const [startDate, setStartDate] = useState('')
   const [deliveryDate, setDeliveryDate] = useState('')
@@ -23,6 +28,7 @@ function NewKbiForm() {
         title,
         business_goal: businessGoal || null,
         ask: ask || null,
+        category_id: Number(categoryId),
         jira_number: jira || null,
         start_date: startDate || null,
         expected_delivery_date: deliveryDate || null,
@@ -35,6 +41,7 @@ function NewKbiForm() {
       setTitle('')
       setBusinessGoal('')
       setAsk('')
+      setCategoryId('')
       setJira('')
       setStartDate('')
       setDeliveryDate('')
@@ -45,15 +52,25 @@ function NewKbiForm() {
 
   return (
     <section className="card">
-      <h2>New Key Business Initiative</h2>
+      <h2>New Change Business</h2>
       <div className="form-grid">
-        <FormField label="Title" hint="What the initiative is about">
+        <FormField label="Ask" hint="What needs to be delivered">
           <input placeholder="e.g. Customer Portal Migration" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </FormField>
+        <FormField label="Category" hint="Which Change Business area this belongs to">
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="">Category…</option>
+            {(categories ?? []).map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
         </FormField>
         <FormField label="Business Goal" hint="The outcome this needs to achieve">
           <input placeholder="e.g. Reduce hosting costs" value={businessGoal} onChange={(e) => setBusinessGoal(e.target.value)} />
         </FormField>
-        <FormField label="The Ask" hint="What the Cloud Team needs to provide">
+        <FormField label="Additional Ask Detail" hint="Optional - more on what the Cloud Team needs to provide">
           <input placeholder="e.g. Migrate the portal backend with zero downtime" value={ask} onChange={(e) => setAsk(e.target.value)} />
         </FormField>
         <FormField label="Jira Number" hint="Optional, e.g. ME-1">
@@ -81,7 +98,7 @@ function NewKbiForm() {
           </select>
         </FormField>
       </div>
-      <button className="btn btn-primary" disabled={!title || mutation.isPending} onClick={() => mutation.mutate()}>
+      <button className="btn btn-primary" disabled={!title || !categoryId || mutation.isPending} onClick={() => mutation.mutate()}>
         Create
       </button>
     </section>
@@ -95,7 +112,7 @@ export function KbiCatalogPage() {
   return (
     <div className="page">
       <div className="page-toolbar">
-        <h1 className="page-title">Key Business Initiatives</h1>
+        <h1 className="page-title">Change Business</h1>
       </div>
 
       <NewKbiForm />
@@ -106,7 +123,8 @@ export function KbiCatalogPage() {
           <table>
             <thead>
               <tr>
-                <th>Title</th>
+                <th>Ask</th>
+                <th>Category</th>
                 <th>Priority</th>
                 <th>Complexity</th>
                 <th>Delivery Date</th>
@@ -118,6 +136,7 @@ export function KbiCatalogPage() {
               {(data ?? []).map((kbi) => (
                 <tr key={kbi.id}>
                   <td>{kbi.title}</td>
+                  <td>{kbi.category.name}</td>
                   <td>{kbi.priority ?? '—'}</td>
                   <td>{kbi.complexity ?? '—'}</td>
                   <td>{kbi.expected_delivery_date ?? '—'}</td>

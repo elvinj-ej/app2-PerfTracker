@@ -7,9 +7,10 @@ Initiative row itself.
 
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Initiative, InitiativeEngineer, PlatformInitiativeDetail, RecurringOpsDetail
+from app.models import Initiative, InitiativeEngineer, KbiDetail, PlatformInitiativeDetail, RecurringOpsDetail
 from app.models.enums import InitiativeType
 from app.schemas.initiative import KbiRead, PlatformInitiativeRead, RecurringOpsRead
+from app.schemas.kbi_category import KbiCategoryRead
 from app.schemas.platform_category import PlatformInitiativeCategoryRead
 from app.schemas.recurring_ops_category import RecurringOpsCategoryRead
 
@@ -20,6 +21,7 @@ def query_by_type(db: Session, type_: InitiativeType):
         .filter(Initiative.type == type_)
         .options(
             selectinload(Initiative.engineer_links),
+            selectinload(Initiative.kbi_detail).selectinload(KbiDetail.category),
             selectinload(Initiative.platform_detail).selectinload(PlatformInitiativeDetail.category),
             selectinload(Initiative.recurring_ops_detail).selectinload(RecurringOpsDetail.category),
         )
@@ -61,7 +63,12 @@ def _base_fields(initiative: Initiative) -> dict:
 
 
 def to_kbi_read(initiative: Initiative) -> KbiRead:
-    return KbiRead(**_base_fields(initiative), ask=initiative.ask, engineer_ids=engineer_ids(initiative))
+    return KbiRead(
+        **_base_fields(initiative),
+        ask=initiative.ask,
+        category=KbiCategoryRead.model_validate(initiative.kbi_detail.category),
+        engineer_ids=engineer_ids(initiative),
+    )
 
 
 def to_platform_read(initiative: Initiative) -> PlatformInitiativeRead:
@@ -80,6 +87,7 @@ def to_recurring_ops_read(initiative: Initiative) -> RecurringOpsRead:
         title=initiative.title,
         description=initiative.description,
         status=initiative.status,
+        priority=initiative.priority,
         category=RecurringOpsCategoryRead.model_validate(detail.category),
         recurrence_type=detail.recurrence_type,
         recurrence_interval=detail.recurrence_interval,

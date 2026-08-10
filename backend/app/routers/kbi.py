@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth_context import Actor, get_current_actor, require_manager
 from app.database import get_db
-from app.models import Engineer, Initiative
+from app.models import Engineer, Initiative, KbiCategory, KbiDetail
 from app.models.enums import InitiativeType
 from app.schemas.initiative import KbiCreate, KbiRead, KbiUpdate
 from app.schemas.opt_in import GenerateBreakdownRequest, OptInRequest
@@ -14,6 +14,13 @@ from app.services.initiatives import opt_out as _opt_out
 from app.services.initiatives import query_by_type, to_kbi_read
 
 router = APIRouter(prefix="/api/kbis", tags=["kbis"])
+
+
+def _get_category_or_404(db: Session, category_id: int) -> KbiCategory:
+    category = db.get(KbiCategory, category_id)
+    if category is None:
+        raise HTTPException(status_code=404, detail="KBI category not found")
+    return category
 
 
 @router.get("", response_model=list[KbiRead])
@@ -29,10 +36,15 @@ def create_kbi(
     actor: Actor = Depends(get_current_actor),
 ):
     require_manager(actor)
-    initiative = Initiative(type=InitiativeType.KBI, **payload.model_dump())
+    _get_category_or_404(db, payload.category_id)
+    data = payload.model_dump()
+    category_id = data.pop("category_id")
+    initiative = Initiative(type=InitiativeType.KBI, **data)
     db.add(initiative)
+    db.flush()
+    db.add(KbiDetail(initiative_id=initiative.id, category_id=category_id))
     db.commit()
-    db.refresh(initiative)
+    initiative = query_by_type(db, InitiativeType.KBI).filter(Initiative.id == initiative.id).first()
     return to_kbi_read(initiative)
 
 
@@ -57,7 +69,12 @@ def update_kbi(
 ):
     require_manager(actor)
     initiative = _get_kbi_or_404(db, kbi_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    category_id = data.pop("category_id", None)
+    if category_id is not None:
+        _get_category_or_404(db, category_id)
+        initiative.kbi_detail.category_id = category_id
+    for field, value in data.items():
         setattr(initiative, field, value)
     db.commit()
     db.refresh(initiative)
@@ -120,6 +137,8 @@ def generate_kbi_breakdown(
     if db.get(Engineer, owner_id) is None:
         raise HTTPException(status_code=404, detail="default_owner_engineer_id does not reference a known engineer")
     try:
-        return generate_and_persist_breakdown(db, initiative, owner_id)
+        return generate_and_persist_breakdown(
+            db, initiative, owner_id, category_name=initiative.kbi_detail.category.name
+        )
     except AiBreakdownError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

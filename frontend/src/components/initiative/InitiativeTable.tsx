@@ -23,7 +23,7 @@ export function InitiativeTable({
           <table>
             <thead>
               <tr>
-                <th>Title</th>
+                <th>Ask</th>
                 {showCategory && <th>Category</th>}
                 <th>Status</th>
                 <th>Completion</th>

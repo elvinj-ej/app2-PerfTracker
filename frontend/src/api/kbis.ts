@@ -1,5 +1,5 @@
 import type { Actor } from '../context/ActorContext'
-import type { Kbi } from '../types/api'
+import type { Kbi, KbiCategory } from '../types/api'
 import { apiFetch } from './client'
 
 export interface KbiPayload {
@@ -7,6 +7,7 @@ export interface KbiPayload {
   description?: string | null
   business_goal?: string | null
   ask?: string | null
+  category_id: number
   jira_number?: string | null
   start_date?: string | null
   expected_delivery_date?: string | null
@@ -17,6 +18,10 @@ export interface KbiPayload {
 
 export function listKbis(actor: Actor): Promise<Kbi[]> {
   return apiFetch<Kbi[]>('/api/kbis', actor)
+}
+
+export function listKbiCategories(actor: Actor): Promise<KbiCategory[]> {
+  return apiFetch<KbiCategory[]>('/api/kbi-categories', actor)
 }
 
 export function getKbi(actor: Actor, id: number): Promise<Kbi> {

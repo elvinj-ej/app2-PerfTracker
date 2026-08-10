@@ -6,6 +6,7 @@ export interface RecurringOpsPayload {
   title: string
   description?: string | null
   status?: string
+  priority?: string | null
   category_id: number
   recurrence_type: string
   recurrence_interval?: number

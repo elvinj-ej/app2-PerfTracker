@@ -16,6 +16,7 @@ function NewRecurringOpsForm() {
   const [description, setDescription] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [recurrenceType, setRecurrenceType] = useState('MONTHLY')
+  const [priority, setPriority] = useState('MEDIUM')
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -24,6 +25,7 @@ function NewRecurringOpsForm() {
         description: description || null,
         category_id: Number(categoryId),
         recurrence_type: recurrenceType,
+        priority,
         status: 'OPEN',
       }),
     onSuccess: () => {
@@ -40,7 +42,7 @@ function NewRecurringOpsForm() {
     <section className="card">
       <h2>New Run Operations Item</h2>
       <div className="form-grid">
-        <FormField label="Title" hint="What the recurring work is">
+        <FormField label="Ask" hint="What the recurring work is">
           <input placeholder="e.g. Monthly Patching - Windows Fleet" value={title} onChange={(e) => setTitle(e.target.value)} />
         </FormField>
         <FormField label="Description" hint="Optional extra context">
@@ -58,11 +60,21 @@ function NewRecurringOpsForm() {
         </FormField>
         <FormField label="Recurrence" hint="How often this repeats">
           <select value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value)}>
-            <option value="ANNUAL">Annual</option>
-            <option value="QUARTERLY">Quarterly</option>
-            <option value="MONTHLY">Monthly</option>
+            <option value="DAILY">Daily</option>
             <option value="WEEKLY">Weekly</option>
+            <option value="MONTHLY">Monthly</option>
+            <option value="QUARTERLY">Quarterly</option>
+            <option value="HALF_YEARLY">Half Yearly</option>
+            <option value="ANNUAL">Annual</option>
             <option value="AD_HOC">Ad Hoc</option>
+          </select>
+        </FormField>
+        <FormField label="Priority" hint="How urgent this is">
+          <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
           </select>
         </FormField>
       </div>
@@ -91,9 +103,10 @@ export function RecurringOpsCatalogPage() {
           <table>
             <thead>
               <tr>
-                <th>Title</th>
+                <th>Ask</th>
                 <th>Category</th>
                 <th>Recurrence</th>
+                <th>Priority</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -104,6 +117,7 @@ export function RecurringOpsCatalogPage() {
                   <td>{item.title}</td>
                   <td>{item.category.name}</td>
                   <td>{item.recurrence_type}</td>
+                  <td>{item.priority ?? '—'}</td>
                   <td>{item.status}</td>
                   <td>
                     <Link to={`/recurring-ops/${item.id}`}>View</Link>

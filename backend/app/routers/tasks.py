@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Engineer, Initiative, Task
 from app.schemas.task import TaskCreate, TaskRead, TaskReorderRequest, TaskUpdate
-from app.services.outcome_dates import OutcomeDateError, validate_delivery_span
+from app.services.outcome_dates import OutcomeDateError, validate_delivery_span, validate_within_ask_timeline
 
 router = APIRouter(tags=["tasks"])
 
@@ -28,9 +28,13 @@ def _validate_owner(db: Session, owner_engineer_id: int) -> None:
         raise HTTPException(status_code=400, detail="owner_engineer_id does not reference a known engineer")
 
 
-def _validate_dates(start_date, delivery_date) -> None:
+def _validate_dates(start_date, delivery_date, initiative: Initiative | None = None) -> None:
     try:
         validate_delivery_span(start_date, delivery_date)
+        if initiative is not None:
+            validate_within_ask_timeline(
+                start_date, delivery_date, initiative.start_date, initiative.expected_delivery_date
+            )
     except OutcomeDateError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -43,9 +47,9 @@ def list_tasks(initiative_id: int, db: Session = Depends(get_db)):
 
 @router.post("/api/initiatives/{initiative_id}/tasks", response_model=TaskRead, status_code=201)
 def create_task(initiative_id: int, payload: TaskCreate, db: Session = Depends(get_db)):
-    _get_initiative_or_404(db, initiative_id)
+    initiative = _get_initiative_or_404(db, initiative_id)
     _validate_owner(db, payload.owner_engineer_id)
-    _validate_dates(payload.start_date, payload.delivery_date)
+    _validate_dates(payload.start_date, payload.delivery_date, initiative)
     max_order = (
         db.query(Task.sequence_order).filter(Task.initiative_id == initiative_id).order_by(Task.sequence_order.desc()).first()
     )
@@ -66,6 +70,7 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
     _validate_dates(
         data.get("start_date", task.start_date),
         data.get("delivery_date", task.delivery_date),
+        db.get(Initiative, task.initiative_id),
     )
     for field, value in data.items():
         setattr(task, field, value)

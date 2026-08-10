@@ -1,18 +1,50 @@
-"""Populates a handful of engineers, the platform category lookup, and sample
-initiatives/tasks/time entries spanning the current fiscal year, for local dev/demo use.
-Safe to re-run: it clears and reseeds rather than appending duplicates.
+"""Loads the Hosting & Platform team's real FY26-27 Ask catalog (see
+`app/data/fy2627_asks.py`) as the tool's starting data: the 3 named engineers, the
+category lookups derived from the catalog, and every Ask as an unclaimed, marketplace-
+ready initiative. Deliberately carries no seeded outcomes or opt-ins - engineers pick
+their own Asks (and define their own Outcomes) from the Marketplace. Safe to re-run: it
+clears and reloads rather than appending duplicates.
+
+FY26-27 runs July 2026 - June 2027 (Cochlear's fiscal year). The catalog's "By Date"
+column is free text ("by end of quarter", "by end of half year", ...) rather than a
+concrete date, so the assumptions below turn it into a real one. They're intentionally
+visible here (not buried) since a manager reviewing the loaded data will want to correct
+any of them via the UI - every date this script assigns is editable afterward:
+
+- Run Operations rows (recurring, no single deadline) get a RecurrenceType instead of a
+  date: day->DAILY, month->MONTHLY, quarter->QUARTERLY, half year->HALF_YEARLY,
+  year->ANNUAL.
+- Change Platform / Change Business rows (one-time Asks) get a concrete
+  `expected_delivery_date`:
+    "by end of quarter"    -> FY26-27 Q1 end   (2026-09-30) - nearest quarter, since the
+                                                                sheet doesn't say which one
+    "by end of half year"  -> FY26-27 H1 end   (2026-12-31) - nearest half, same reasoning
+    "by end of year"       -> FY26-27 end      (2027-06-30)
+    "by Feb"                -> 2027-02-28       - the only February inside FY26-27
+    anything else / blank  -> FY26-27 end      (2027-06-30), the catch-all backlog date
+  A couple of rows carry a sub-detail note in column C instead of a date phrase (e.g.
+  "ChengDu Go Live") - those fall into the blank/catch-all case and the note is folded
+  into the description instead of parsed as a deadline.
+- Priority is inferred from keywords in the category/Ask text: security, compliance,
+  access-review, DR/backup/restore language -> CRITICAL; upgrade/retire/renewal/go-live/
+  cost-control language -> HIGH; "evaluate"/"re-assess"/exploratory language -> LOW;
+  everything else -> MEDIUM. This is a heuristic, not a judgment call from the business -
+  re-prioritize freely once loaded.
 """
 
-from datetime import date, timedelta
+from datetime import date
 
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
+from app.data.fy2627_asks import BUSINESS_ROWS, PLATFORM_ROWS, RUN_ROWS
 from app.models import (
     AiBreakdownRequest,
     Engineer,
     Initiative,
     InitiativeEngineer,
+    KbiCategory,
+    KbiDetail,
     PlatformInitiativeCategory,
     PlatformInitiativeDetail,
     RecurringOpsCategory,
@@ -21,18 +53,85 @@ from app.models import (
     TimeEntry,
     UpgradeUnit,
 )
-from app.models.enums import (
-    Complexity,
-    InitiativeStatus,
-    InitiativeType,
-    Priority,
-    RecurrenceType,
-    TaskStage,
-    TaskStatus,
-    UpgradeUnitStatus,
+from app.models.enums import InitiativeStatus, InitiativeType, Priority, RecurrenceType
+
+FY_Q1_END = date(2026, 9, 30)
+FY_H1_END = date(2026, 12, 31)
+FY_END = date(2027, 6, 30)
+FY_FEB_END = date(2027, 2, 28)
+
+_RUN_CADENCE_BY_PHRASE = {
+    "by end of day": RecurrenceType.DAILY,
+    "by end of month": RecurrenceType.MONTHLY,
+    "by end of quarter": RecurrenceType.QUARTERLY,
+    "by end of half year": RecurrenceType.HALF_YEARLY,
+    "by end of year": RecurrenceType.ANNUAL,
+}
+
+_CHANGE_DATE_BY_PHRASE = {
+    "by end of quarter": FY_Q1_END,
+    "by end of half year": FY_H1_END,
+    "by end of year": FY_END,
+    "by feb": FY_FEB_END,
+}
+
+_LOW_PRIORITY_KEYWORDS = ("evaluate", "re-asses", "re-assess", "set-up and deploy patterns")
+_CRITICAL_PRIORITY_KEYWORDS = (
+    "security",
+    "vulnerab",
+    "compliance",
+    "sailpoint",
+    "access review",
+    "password reset",
+    "dr test",
+    "disaster",
+    "backup",
+    "restore",
+    "audit",
 )
-from app.services.fiscal_year import week_start
-from app.services.outcome_dates import sequential_wednesday_windows
+_HIGH_PRIORITY_KEYWORDS = (
+    "upgrade",
+    "upgrde",
+    "update of",
+    "retire",
+    "retirement",
+    "renewal",
+    "go live",
+    "finops",
+    "cost control",
+    "patching",
+)
+
+
+def _parse_run_cadence(by_date: str | None) -> RecurrenceType:
+    if by_date:
+        cadence = _RUN_CADENCE_BY_PHRASE.get(by_date.strip().lower())
+        if cadence is not None:
+            return cadence
+    return RecurrenceType.AD_HOC
+
+
+def _parse_change_delivery(by_date: str | None) -> tuple[date, str | None]:
+    """Returns (expected_delivery_date, extra_note). extra_note is folded into the
+    initiative's description when column C held a sub-detail rather than a date phrase.
+    """
+    if not by_date:
+        return FY_END, None
+    known = _CHANGE_DATE_BY_PHRASE.get(by_date.strip().lower())
+    if known is not None:
+        return known, None
+    return FY_END, by_date
+
+
+def _infer_priority(category: str, ask: str) -> Priority:
+    text = f"{category} {ask}".lower()
+    if any(k in text for k in _LOW_PRIORITY_KEYWORDS):
+        return Priority.LOW
+    if any(k in text for k in _CRITICAL_PRIORITY_KEYWORDS):
+        return Priority.CRITICAL
+    if any(k in text for k in _HIGH_PRIORITY_KEYWORDS):
+        return Priority.HIGH
+    return Priority.MEDIUM
 
 
 def _clear_all(db: Session) -> None:
@@ -42,9 +141,11 @@ def _clear_all(db: Session) -> None:
         Task,
         InitiativeEngineer,
         AiBreakdownRequest,
+        KbiDetail,
         PlatformInitiativeDetail,
         RecurringOpsDetail,
         Initiative,
+        KbiCategory,
         PlatformInitiativeCategory,
         RecurringOpsCategory,
         Engineer,
@@ -53,9 +154,20 @@ def _clear_all(db: Session) -> None:
     db.commit()
 
 
+def _get_or_create_category(db: Session, cache: dict[str, object], model, name: str):
+    category = cache.get(name)
+    if category is None:
+        category = model(name=name, sort_order=len(cache) + 1)
+        db.add(category)
+        db.flush()
+        cache[name] = category
+    return category
+
+
 def seed(db: Session) -> None:
     _clear_all(db)
 
+    # Kept as-is - the 3 named engineers stay, only the initiative/outcome data changes.
     engineers = [
         Engineer(name="Priya Nandakumar", email="priya.nandakumar@example.com", title="Senior Systems Engineer"),
         Engineer(name="Marcus Fell", email="marcus.fell@example.com", title="Senior Systems Engineer"),
@@ -63,273 +175,60 @@ def seed(db: Session) -> None:
     ]
     db.add_all(engineers)
     db.flush()
-    priya, marcus, aisha = engineers
 
-    categories = [
-        PlatformInitiativeCategory(name="SQL Upgrade", is_upgrade_type=True, sort_order=1),
-        PlatformInitiativeCategory(name="Windows Server Upgrade", is_upgrade_type=True, sort_order=2),
-        PlatformInitiativeCategory(name="VMware Upgrade", is_upgrade_type=True, sort_order=3),
-        PlatformInitiativeCategory(name="Ops Manager Upgrade", is_upgrade_type=True, sort_order=4),
-        PlatformInitiativeCategory(name="Improvement", is_upgrade_type=False, sort_order=5),
-        PlatformInitiativeCategory(
-            name="Out-of-Cycle Vulnerability Management", is_upgrade_type=False, sort_order=6
-        ),
-        PlatformInitiativeCategory(name="Automation", is_upgrade_type=False, sort_order=7),
-    ]
-    db.add_all(categories)
-    db.flush()
-    sql_upgrade_category = categories[0]
-    automation_category = categories[6]
-
-    run_ops_categories = [
-        RecurringOpsCategory(name="Run Patching", sort_order=1),
-        RecurringOpsCategory(name="Run ITSCM", sort_order=2),
-        RecurringOpsCategory(name="Run IAM", sort_order=3),
-        RecurringOpsCategory(name="Run FinOps", sort_order=4),
-    ]
-    db.add_all(run_ops_categories)
-    db.flush()
-    run_patching_category, _run_itscm, run_iam_category, _run_finops = run_ops_categories
-
-    today = date.today()
-
-    # --- Sample KBI ---
-    kbi = Initiative(
-        type=InitiativeType.KBI,
-        title="Customer Portal Migration to New Data Center",
-        description="Migrate the customer-facing portal's backend infrastructure to the new data center.",
-        business_goal="Reduce hosting costs and improve regional latency for APAC customers.",
-        ask="Cloud Team needs to migrate the portal's backend to the new data center with zero customer downtime.",
-        jira_number="CLOUD-1042",
-        start_date=today - timedelta(days=30),
-        expected_delivery_date=today + timedelta(days=60),
-        priority=Priority.HIGH,
-        complexity=Complexity.HIGH,
-        status=InitiativeStatus.IN_PROGRESS,
-    )
-    db.add(kbi)
-    db.flush()
-    db.add_all(
-        [
-            InitiativeEngineer(initiative_id=kbi.id, engineer_id=priya.id),
-            InitiativeEngineer(initiative_id=kbi.id, engineer_id=marcus.id),
-        ]
-    )
-
-    kbi_outcome_windows = sequential_wednesday_windows(kbi.start_date, 5)
-    kbi_tasks = [
-        Task(
-            initiative_id=kbi.id,
-            title="High-Level Design for migration",
-            stage=TaskStage.HLD,
-            owner_engineer_id=priya.id,
-            forecast_duration_days=5,
-            start_date=kbi_outcome_windows[0][0],
-            delivery_date=kbi_outcome_windows[0][1],
-            status=TaskStatus.COMPLETE,
-            sequence_order=0,
-        ),
-        Task(
-            initiative_id=kbi.id,
-            title="Low-Level Design: network + storage layout",
-            stage=TaskStage.LLD,
-            owner_engineer_id=priya.id,
-            forecast_duration_days=8,
-            start_date=kbi_outcome_windows[1][0],
-            delivery_date=kbi_outcome_windows[1][1],
-            status=TaskStatus.COMPLETE,
-            sequence_order=1,
-        ),
-        Task(
-            initiative_id=kbi.id,
-            title="Solution Design approval sign-off",
-            stage=TaskStage.SOLUTION_DESIGN_APPROVAL,
-            owner_engineer_id=marcus.id,
-            forecast_duration_days=3,
-            start_date=kbi_outcome_windows[2][0],
-            delivery_date=kbi_outcome_windows[2][1],
-            status=TaskStatus.IN_PROGRESS,
-            sequence_order=2,
-        ),
-        Task(
-            initiative_id=kbi.id,
-            title="Non-prod deployment and validation",
-            stage=TaskStage.NON_PROD_DEPLOYMENT,
-            owner_engineer_id=marcus.id,
-            forecast_duration_days=10,
-            start_date=kbi_outcome_windows[3][0],
-            delivery_date=kbi_outcome_windows[3][1],
-            status=TaskStatus.NOT_STARTED,
-            sequence_order=3,
-        ),
-        Task(
-            initiative_id=kbi.id,
-            title="Production deployment and cutover",
-            stage=TaskStage.PROD_DEPLOYMENT,
-            owner_engineer_id=priya.id,
-            forecast_duration_days=6,
-            start_date=kbi_outcome_windows[4][0],
-            delivery_date=kbi_outcome_windows[4][1],
-            status=TaskStatus.NOT_STARTED,
-            sequence_order=4,
-        ),
-    ]
-    db.add_all(kbi_tasks)
-    db.flush()
-
-    week1 = week_start(today - timedelta(days=14))
-    week2 = week_start(today - timedelta(days=7))
-    for wk in (week1, week2):
-        db.add(
-            TimeEntry(
-                task_id=kbi_tasks[0].id,
-                engineer_id=priya.id,
-                week_start_date=wk,
-                fiscal_year_label=_fy_label(wk),
-                hours=16,
-            )
+    run_categories: dict[str, RecurringOpsCategory] = {}
+    for category_name, ask, by_date in RUN_ROWS:
+        category = _get_or_create_category(db, run_categories, RecurringOpsCategory, category_name)
+        initiative = Initiative(
+            type=InitiativeType.RECURRING_OPS,
+            title=ask,
+            priority=_infer_priority(category_name, ask),
+            status=InitiativeStatus.OPEN,
         )
+        db.add(initiative)
+        db.flush()
         db.add(
-            TimeEntry(
-                task_id=kbi_tasks[2].id,
-                engineer_id=marcus.id,
-                week_start_date=wk,
-                fiscal_year_label=_fy_label(wk),
-                hours=10,
+            RecurringOpsDetail(
+                initiative_id=initiative.id,
+                category_id=category.id,
+                recurrence_type=_parse_run_cadence(by_date),
+                recurrence_interval=1,
             )
         )
 
-    # --- Sample Platform Initiative (upgrade type) ---
-    platform = Initiative(
-        type=InitiativeType.PLATFORM,
-        title="Q3 SQL Server Fleet Upgrade",
-        description="Upgrade all production SQL Server instances to the latest supported version.",
-        business_goal="Maintain vendor support and close known CVEs.",
-        start_date=today - timedelta(days=10),
-        expected_delivery_date=today + timedelta(days=40),
-        priority=Priority.MEDIUM,
-        complexity=Complexity.MEDIUM,
-        status=InitiativeStatus.IN_PROGRESS,
-    )
-    db.add(platform)
-    db.flush()
-    db.add(PlatformInitiativeDetail(initiative_id=platform.id, category_id=sql_upgrade_category.id))
-    db.add(InitiativeEngineer(initiative_id=platform.id, engineer_id=aisha.id))
-
-    db.add_all(
-        [
-            UpgradeUnit(initiative_id=platform.id, system_name="SQL-PROD-01", system_type="SQL Server 2019",
-                        status=UpgradeUnitStatus.COMPLETE, completed_date=today - timedelta(days=5)),
-            UpgradeUnit(initiative_id=platform.id, system_name="SQL-PROD-02", system_type="SQL Server 2019",
-                        status=UpgradeUnitStatus.IN_PROGRESS),
-            UpgradeUnit(initiative_id=platform.id, system_name="SQL-PROD-03", system_type="SQL Server 2019",
-                        status=UpgradeUnitStatus.NOT_STARTED),
-            UpgradeUnit(initiative_id=platform.id, system_name="SQL-PROD-04", system_type="SQL Server 2019",
-                        status=UpgradeUnitStatus.NOT_STARTED),
-        ]
-    )
-    platform_task = Task(
-        initiative_id=platform.id,
-        title="Coordinate maintenance windows with app owners",
-        stage=TaskStage.OTHER,
-        owner_engineer_id=aisha.id,
-        forecast_duration_days=2,
-        status=TaskStatus.COMPLETE,
-        sequence_order=0,
-    )
-    db.add(platform_task)
-    db.flush()
-    db.add(
-        TimeEntry(
-            task_id=platform_task.id,
-            engineer_id=aisha.id,
-            week_start_date=week2,
-            fiscal_year_label=_fy_label(week2),
-            hours=6,
+    platform_categories: dict[str, PlatformInitiativeCategory] = {}
+    for category_name, ask, by_date in PLATFORM_ROWS:
+        category = _get_or_create_category(db, platform_categories, PlatformInitiativeCategory, category_name)
+        delivery_date, note = _parse_change_delivery(by_date)
+        initiative = Initiative(
+            type=InitiativeType.PLATFORM,
+            title=ask,
+            description=note,
+            expected_delivery_date=delivery_date,
+            priority=_infer_priority(category_name, ask),
+            status=InitiativeStatus.OPEN,
         )
-    )
+        db.add(initiative)
+        db.flush()
+        db.add(PlatformInitiativeDetail(initiative_id=initiative.id, category_id=category.id))
 
-    # --- Sample Platform Initiative (automation, non-upgrade) ---
-    automation = Initiative(
-        type=InitiativeType.PLATFORM,
-        title="Automate Patch Compliance Reporting",
-        description="Build an automated pipeline that reports patch compliance status across the fleet weekly.",
-        business_goal="Cut manual reporting effort and improve audit readiness.",
-        start_date=today - timedelta(days=5),
-        expected_delivery_date=today + timedelta(days=45),
-        priority=Priority.MEDIUM,
-        complexity=Complexity.LOW,
-        status=InitiativeStatus.OPEN,
-    )
-    db.add(automation)
-    db.flush()
-    db.add(PlatformInitiativeDetail(initiative_id=automation.id, category_id=automation_category.id))
-    db.add(InitiativeEngineer(initiative_id=automation.id, engineer_id=marcus.id))
-
-    # --- Sample Recurring Ops initiatives ---
-    monthly_patching = Initiative(
-        type=InitiativeType.RECURRING_OPS,
-        title="Monthly Patching - Windows Fleet",
-        description="Routine monthly OS patching across the Windows server fleet.",
-        status=InitiativeStatus.OPEN,
-    )
-    db.add(monthly_patching)
-    db.flush()
-    db.add(
-        RecurringOpsDetail(
-            initiative_id=monthly_patching.id,
-            category_id=run_patching_category.id,
-            recurrence_type=RecurrenceType.MONTHLY,
-            recurrence_interval=1,
+    kbi_categories: dict[str, KbiCategory] = {}
+    for category_name, ask, by_date in BUSINESS_ROWS:
+        category = _get_or_create_category(db, kbi_categories, KbiCategory, category_name)
+        delivery_date, note = _parse_change_delivery(by_date)
+        initiative = Initiative(
+            type=InitiativeType.KBI,
+            title=ask,
+            description=note,
+            expected_delivery_date=delivery_date,
+            priority=_infer_priority(category_name, ask),
+            status=InitiativeStatus.OPEN,
         )
-    )
-    db.add(InitiativeEngineer(initiative_id=monthly_patching.id, engineer_id=aisha.id))
-    patch_task = Task(
-        initiative_id=monthly_patching.id,
-        title=f"Patch cycle - {today.strftime('%B %Y')}",
-        owner_engineer_id=aisha.id,
-        status=TaskStatus.IN_PROGRESS,
-        sequence_order=0,
-    )
-    db.add(patch_task)
-    db.flush()
-    db.add(
-        TimeEntry(
-            task_id=patch_task.id,
-            engineer_id=aisha.id,
-            week_start_date=week2,
-            fiscal_year_label=_fy_label(week2),
-            hours=8,
-        )
-    )
-
-    annual_reset = Initiative(
-        type=InitiativeType.RECURRING_OPS,
-        title="Annual Password Reset",
-        description="Enforced annual password rotation for privileged service accounts.",
-        status=InitiativeStatus.OPEN,
-    )
-    db.add(annual_reset)
-    db.flush()
-    db.add(
-        RecurringOpsDetail(
-            initiative_id=annual_reset.id,
-            category_id=run_iam_category.id,
-            recurrence_type=RecurrenceType.ANNUAL,
-            recurrence_interval=1,
-            anchor_month=7,
-            anchor_day=1,
-        )
-    )
-    db.add(InitiativeEngineer(initiative_id=annual_reset.id, engineer_id=priya.id))
+        db.add(initiative)
+        db.flush()
+        db.add(KbiDetail(initiative_id=initiative.id, category_id=category.id))
 
     db.commit()
-
-
-def _fy_label(d: date) -> str:
-    from app.services.fiscal_year import fiscal_year_label
-
-    return fiscal_year_label(d)
 
 
 def main() -> None:
@@ -338,7 +237,7 @@ def main() -> None:
     db = SessionLocal()
     try:
         seed(db)
-        print("Seed data loaded.")
+        print("FY26-27 Ask catalog loaded.")
     finally:
         db.close()
 

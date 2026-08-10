@@ -35,6 +35,14 @@ export interface RecurringOpsCategory {
   sort_order: number
 }
 
+export interface KbiCategory {
+  id: number
+  name: string
+  description: string | null
+  active: boolean
+  sort_order: number
+}
+
 export interface InitiativeSummary {
   id: number
   type: InitiativeType
@@ -100,6 +108,7 @@ export interface Kbi {
   description: string | null
   business_goal: string | null
   ask: string | null
+  category: KbiCategory
   jira_number: string | null
   start_date: string | null
   expected_delivery_date: string | null
@@ -131,6 +140,7 @@ export interface RecurringOps {
   title: string
   description: string | null
   status: string
+  priority: string | null
   category: RecurringOpsCategory
   recurrence_type: string
   recurrence_interval: number

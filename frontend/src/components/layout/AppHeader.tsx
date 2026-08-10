@@ -6,10 +6,11 @@ import { useActor } from '../../context/ActorContext'
 
 const NAV_LINKS = [
   { to: '/', label: 'My Dashboard' },
+  { to: '/marketplace', label: 'Marketplace' },
   { to: '/team', label: 'Team Summary' },
   { to: '/reports/monthly', label: 'Monthly Report' },
-  { to: '/kbis', label: 'Key Business Initiatives' },
-  { to: '/platform-initiatives', label: 'Platform Initiatives' },
+  { to: '/kbis', label: 'Change Business' },
+  { to: '/platform-initiatives', label: 'Change Platform' },
   { to: '/recurring-ops', label: 'Run Operations' },
   { to: '/log-time', label: 'Log Time' },
 ]
