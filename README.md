@@ -320,6 +320,19 @@ frontend), and it's safe to re-run any time. If the code came in via
 `setup.bat`, then it stops whatever's currently running on port 5020 and
 restarts it in a new window.
 
+**Your data is never wiped by an update.** `backend/perftracker.db` is
+git-ignored, so `git pull` can't touch it, and `update.bat`/`setup.bat` only
+ever run `alembic upgrade head` - schema migrations that add tables/columns
+(and backfill sensible defaults where needed), never ones that delete your
+data. The *only* thing that wipes the database is deliberately running
+`seed_sample_data.bat` (or `python scripts/seed_db.py`) yourself - it says so
+before it does anything, and asks you to confirm. As extra insurance, both
+`setup.bat` (before every migration) and `seed_sample_data.bat` (before
+wiping) now copy `perftracker.db` to `backend\backups\` with a timestamp
+first, so a bad update or an accidental reseed is always one file-copy away
+from undone. Restore by stopping the app, copying the backup back over
+`backend\perftracker.db`, and restarting.
+
 ```bat
 update.bat
 ```

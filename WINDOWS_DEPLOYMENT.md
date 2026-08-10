@@ -28,10 +28,10 @@ Run these from `C:\Apps\PerfTracker`:
 
 | Command | What it does |
 |---|---|
-| `.\setup.bat` | One-time (or after any update): creates the Python venv, installs dependencies, runs DB migrations, builds the frontend into `backend\static` |
+| `.\setup.bat` | One-time (or after any update): creates the Python venv, installs dependencies, backs up `perftracker.db` to `backend\backups\` then runs DB migrations, builds the frontend into `backend\static` |
 | `.\start.bat` | Starts the app at `http://localhost:5020/PerfTracker` |
-| `.\seed_sample_data.bat` | **Wipes** the database and loads sample demo data |
-| `.\update.bat` | `git pull` + re-run setup + restart the running instance (requires Git) |
+| `.\seed_sample_data.bat` | **Wipes** the database (after backing it up) and loads the FY26-27 Ask catalog fresh |
+| `.\update.bat` | `git pull` + re-run setup + restart the running instance (requires Git) - never wipes data; see [Updating after a code change](README.md#updating-after-a-code-change) |
 
 ## Known issues hit during setup, and their fixes
 
