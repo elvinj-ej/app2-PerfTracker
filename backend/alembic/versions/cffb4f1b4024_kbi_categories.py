@@ -37,6 +37,33 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('initiative_id')
     )
 
+    # kbi_details is a brand new 1:1 table, so any KBI initiative that already existed
+    # before this migration has no row in it at all (not even a nullable placeholder) -
+    # unlike recurring_ops_details, which already existed and just gained a column. Any
+    # such pre-existing KBI would otherwise 500 the moment the API tries to read its
+    # category. Give every KBI initiative without a kbi_details row a default category.
+    conn = op.get_bind()
+    existing_kbi_ids = [
+        row[0] for row in conn.execute(sa.text("SELECT id FROM initiatives WHERE type = 'KBI'"))
+    ]
+    if existing_kbi_ids:
+        result = conn.execute(
+            sa.text(
+                "INSERT INTO kbi_categories (name, description, active, sort_order) "
+                "VALUES ('General', NULL, 1, 1)"
+            )
+        )
+        default_category_id = result.lastrowid or conn.execute(
+            sa.text("SELECT id FROM kbi_categories WHERE name = 'General'")
+        ).scalar_one()
+        for initiative_id in existing_kbi_ids:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO kbi_details (initiative_id, category_id) VALUES (:iid, :cid)"
+                ),
+                {"iid": initiative_id, "cid": default_category_id},
+            )
+
     # recurrence_type gained DAILY and HALF_YEARLY. On SQLite this column is a plain
     # VARCHAR with no CHECK constraint (SQLAlchemy's Enum only renders one on dialects
     # that ask for it, and SQLite doesn't enforce VARCHAR length either way), so no DDL
