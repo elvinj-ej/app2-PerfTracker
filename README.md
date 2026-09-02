@@ -220,10 +220,20 @@ counts fully toward July, even though it runs into August).
   `frontend/src/`. The production build is a handful of static files that
   FastAPI serves directly (`backend/app/main.py`) — so the whole app runs as
   **one process**, no separate frontend server needed once built.
-- **Auth**: no real authentication in v1 — a lightweight role/engineer switcher
-  in the header sends `X-Actor-Role` / `X-Actor-Engineer-Id` headers, resolved by
-  a single `get_current_actor()` dependency (`backend/app/core/auth_context.py`).
-  Swapping in real auth later means rewriting that one function.
+- **Auth**: no real authentication in v1 — a lightweight actor switcher in the
+  topbar (`frontend/src/components/layout/Topbar.tsx`) sends `X-Actor-Role` /
+  `X-Actor-Engineer-Id` headers, resolved by a single `get_current_actor()`
+  dependency (`backend/app/core/auth_context.py`). Swapping in real auth later
+  means rewriting that one function. The three named managers (Jan Willems,
+  Rubendran Ambihaipahan, Elvin Edgar — `frontend/src/data/managers.ts`) are
+  purely a UI convenience for picking "who am I today"; the backend treats
+  every manager identically (`role: manager`, no per-manager permissions).
+- **UI layout**: a fixed left sidebar (`components/layout/Sidebar.tsx`,
+  grouped Overview/Catalogs/Time Tracking/Manager Tools) plus a topbar +
+  content column that share one `--content-px` padding value, so the two
+  can't drift out of alignment the way a full-width header next to a
+  centered, max-width content area could. Collapses to an icon-only rail
+  below 960px (`frontend/src/index.css`).
 - **Excel export**: `backend/app/services/excel_export.py` builds the Monthly
   Report workbook with `openpyxl` — no pandas dependency.
 - **Hosting under a path prefix**: the whole FastAPI app is mounted as a
@@ -347,11 +357,16 @@ To load the starting data the first time, run `seed_sample_data.bat`
 (Windows) or `python scripts/seed_db.py` from an activated venv — **this
 wipes and reloads all data**, so only do it once, on a fresh install. It's
 not demo/placeholder data: it loads the real FY26-27 Ask catalog
-(`backend/app/data/fy2627_asks.py`) as unclaimed Marketplace Asks, keeping
-only the 3 named engineers as sample accounts. See
-[Managing repeated Asks](#managing-repeated-asks) and
-`backend/app/services/seed.py` for the category/date/priority assumptions it
-makes while loading.
+(`backend/app/data/fy2627_asks.py`) as unclaimed Marketplace Asks, alongside
+the Cloud Team's 14 named engineers (David Raddoux, Junling Yu, Luke
+Winters, ... — see `backend/app/services/seed.py` for the full roster). See
+[Managing repeated Asks](#managing-repeated-asks) and that same file for the
+category/date/priority assumptions it makes while loading.
+
+If you'd rather load your own Ask catalog instead of (or in addition to) the
+built-in FY26-27 one, see
+[Uploading the Marketplace Ask catalog](#uploading-the-marketplace-ask-catalog)
+above — no reseed needed, and it won't touch the engineer roster.
 
 To keep it running after you close the terminal / across reboots, wrap
 `start.bat` (or the `uvicorn` command) in a Windows Scheduled Task ("run
@@ -472,6 +487,8 @@ parent-Ask timeline bound, and the deterministic window-assignment helper),
 the FY26-27 seed catalog (cadence/date/priority parsing, and that every
 seeded row actually serializes through its API Read schema), the
 AI-breakdown parsing/persistence (against a mocked Claude client — no real
-API calls or cost in the test suite), and both Jira import parsers — the XML
-one (including a check that it rejects an XXE payload) and the Word/HTML
-one.
+API calls or cost in the test suite), both Jira import parsers — the XML one
+(including a check that it rejects an XXE payload) and the Word/HTML one —
+and the Ask catalog upload parser (category-prefix type classification,
+section-header/blank-row skipping, duplicate-title detection, and header
+variants).
