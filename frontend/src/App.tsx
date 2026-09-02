@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppHeader } from './components/layout/AppHeader'
 import { ActorProvider } from './context/ActorContext'
+import { AskCatalogUploadPage } from './pages/AskCatalogUploadPage'
 import { EngineerDashboardPage } from './pages/EngineerDashboardPage'
 import { ImportInitiativePage } from './pages/ImportInitiativePage'
 import { KbiCatalogPage } from './pages/KbiCatalogPage'
@@ -37,6 +38,7 @@ function App() {
               <Route path="/recurring-ops/:id" element={<RecurringOpsDetailPage />} />
               <Route path="/log-time" element={<WeeklyTimeEntryPage />} />
               <Route path="/import" element={<ImportInitiativePage />} />
+              <Route path="/import/ask-catalog" element={<AskCatalogUploadPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

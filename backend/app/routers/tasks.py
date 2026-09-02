@@ -23,8 +23,8 @@ def _get_task_or_404(db: Session, task_id: int) -> Task:
     return task
 
 
-def _validate_owner(db: Session, owner_engineer_id: int) -> None:
-    if db.get(Engineer, owner_engineer_id) is None:
+def _validate_owner(db: Session, owner_engineer_id: int | None) -> None:
+    if owner_engineer_id is not None and db.get(Engineer, owner_engineer_id) is None:
         raise HTTPException(status_code=400, detail="owner_engineer_id does not reference a known engineer")
 
 

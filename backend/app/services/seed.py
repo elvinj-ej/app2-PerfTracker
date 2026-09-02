@@ -32,8 +32,6 @@ any of them via the UI - every date this script assigns is editable afterward:
   re-prioritize freely once loaded.
 """
 
-from datetime import date
-
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
@@ -53,85 +51,8 @@ from app.models import (
     TimeEntry,
     UpgradeUnit,
 )
-from app.models.enums import InitiativeStatus, InitiativeType, Priority, RecurrenceType
-
-FY_Q1_END = date(2026, 9, 30)
-FY_H1_END = date(2026, 12, 31)
-FY_END = date(2027, 6, 30)
-FY_FEB_END = date(2027, 2, 28)
-
-_RUN_CADENCE_BY_PHRASE = {
-    "by end of day": RecurrenceType.DAILY,
-    "by end of month": RecurrenceType.MONTHLY,
-    "by end of quarter": RecurrenceType.QUARTERLY,
-    "by end of half year": RecurrenceType.HALF_YEARLY,
-    "by end of year": RecurrenceType.ANNUAL,
-}
-
-_CHANGE_DATE_BY_PHRASE = {
-    "by end of quarter": FY_Q1_END,
-    "by end of half year": FY_H1_END,
-    "by end of year": FY_END,
-    "by feb": FY_FEB_END,
-}
-
-_LOW_PRIORITY_KEYWORDS = ("evaluate", "re-asses", "re-assess", "set-up and deploy patterns")
-_CRITICAL_PRIORITY_KEYWORDS = (
-    "security",
-    "vulnerab",
-    "compliance",
-    "sailpoint",
-    "access review",
-    "password reset",
-    "dr test",
-    "disaster",
-    "backup",
-    "restore",
-    "audit",
-)
-_HIGH_PRIORITY_KEYWORDS = (
-    "upgrade",
-    "upgrde",
-    "update of",
-    "retire",
-    "retirement",
-    "renewal",
-    "go live",
-    "finops",
-    "cost control",
-    "patching",
-)
-
-
-def _parse_run_cadence(by_date: str | None) -> RecurrenceType:
-    if by_date:
-        cadence = _RUN_CADENCE_BY_PHRASE.get(by_date.strip().lower())
-        if cadence is not None:
-            return cadence
-    return RecurrenceType.AD_HOC
-
-
-def _parse_change_delivery(by_date: str | None) -> tuple[date, str | None]:
-    """Returns (expected_delivery_date, extra_note). extra_note is folded into the
-    initiative's description when column C held a sub-detail rather than a date phrase.
-    """
-    if not by_date:
-        return FY_END, None
-    known = _CHANGE_DATE_BY_PHRASE.get(by_date.strip().lower())
-    if known is not None:
-        return known, None
-    return FY_END, by_date
-
-
-def _infer_priority(category: str, ask: str) -> Priority:
-    text = f"{category} {ask}".lower()
-    if any(k in text for k in _LOW_PRIORITY_KEYWORDS):
-        return Priority.LOW
-    if any(k in text for k in _CRITICAL_PRIORITY_KEYWORDS):
-        return Priority.CRITICAL
-    if any(k in text for k in _HIGH_PRIORITY_KEYWORDS):
-        return Priority.HIGH
-    return Priority.MEDIUM
+from app.models.enums import InitiativeStatus, InitiativeType
+from app.services.ask_parsing import infer_priority, parse_change_delivery, parse_run_cadence
 
 
 def _clear_all(db: Session) -> None:
@@ -192,7 +113,7 @@ def seed(db: Session) -> None:
         initiative = Initiative(
             type=InitiativeType.RECURRING_OPS,
             title=ask,
-            priority=_infer_priority(category_name, ask),
+            priority=infer_priority(category_name, ask),
             status=InitiativeStatus.OPEN,
         )
         db.add(initiative)
@@ -201,7 +122,7 @@ def seed(db: Session) -> None:
             RecurringOpsDetail(
                 initiative_id=initiative.id,
                 category_id=category.id,
-                recurrence_type=_parse_run_cadence(by_date),
+                recurrence_type=parse_run_cadence(by_date),
                 recurrence_interval=1,
             )
         )
@@ -209,13 +130,13 @@ def seed(db: Session) -> None:
     platform_categories: dict[str, PlatformInitiativeCategory] = {}
     for category_name, ask, by_date in PLATFORM_ROWS:
         category = _get_or_create_category(db, platform_categories, PlatformInitiativeCategory, category_name)
-        delivery_date, note = _parse_change_delivery(by_date)
+        delivery_date, note = parse_change_delivery(by_date)
         initiative = Initiative(
             type=InitiativeType.PLATFORM,
             title=ask,
             description=note,
             expected_delivery_date=delivery_date,
-            priority=_infer_priority(category_name, ask),
+            priority=infer_priority(category_name, ask),
             status=InitiativeStatus.OPEN,
         )
         db.add(initiative)
@@ -225,13 +146,13 @@ def seed(db: Session) -> None:
     kbi_categories: dict[str, KbiCategory] = {}
     for category_name, ask, by_date in BUSINESS_ROWS:
         category = _get_or_create_category(db, kbi_categories, KbiCategory, category_name)
-        delivery_date, note = _parse_change_delivery(by_date)
+        delivery_date, note = parse_change_delivery(by_date)
         initiative = Initiative(
             type=InitiativeType.KBI,
             title=ask,
             description=note,
             expected_delivery_date=delivery_date,
-            priority=_infer_priority(category_name, ask),
+            priority=infer_priority(category_name, ask),
             status=InitiativeStatus.OPEN,
         )
         db.add(initiative)

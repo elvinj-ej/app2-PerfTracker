@@ -522,6 +522,17 @@ select, input, textarea {
   font-family: inherit;
 }
 
+.card-inset {
+  background: var(--color-bg-inset, rgba(0, 0, 0, 0.03));
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.card-inset h3 {
+  margin-top: 0;
+}
+
 /* --- Marketplace --- */
 
 .marketplace-intro {

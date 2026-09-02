@@ -71,6 +71,13 @@ being renamed everywhere in the codebase; only the UI labels changed.
   field, choose whether it becomes a Change Business or Change Platform Ask
   (and its category), and only then create it. See
   [Importing initiatives from Jira](#importing-initiatives-from-jira) below.
+- **Upload Marketplace** — a manager can bulk-load the whole Ask catalog
+  from a spreadsheet (Category / Ask / By Date / Outcome columns), either
+  adding only the Asks not already in the Marketplace or replacing the
+  entire catalog outright. Always shows a full preview - counts, warnings,
+  every parsed row - before anything is written. See
+  [Uploading the Marketplace Ask catalog](#uploading-the-marketplace-ask-catalog)
+  below.
 
 ## Design
 
@@ -253,6 +260,46 @@ library. Pulls the same fields as the XML export, plus "Priority" and
 "Status" from their own labeled rows, and folds "Opportunity", "Who will
 Benefit?", and "Functional Stream" into the description (each clearly
 labeled) since there's no dedicated field for them in this app's data model.
+
+## Uploading the Marketplace Ask catalog
+
+A manager can bulk-load the entire Marketplace from one spreadsheet via the
+**Upload Marketplace** page, instead of creating Asks one at a time. Download
+the blank template from that page (or build your own) with these columns:
+
+| Category | Ask | By Date | Outcome 1 | Outcome 2 | ... |
+|---|---|---|---|---|---|
+
+- **Category** decides the type: a category starting with "Run" becomes a
+  Run Operations Ask, "Change Platform" a Change Platform Ask, "Change
+  Business" a Change Business Ask (same convention as the built-in FY26-27
+  catalog in `backend/app/data/fy2627_asks.py`). Any other category is
+  flagged in the preview and skipped.
+- **Ask** becomes the initiative's title.
+- **By Date** is parsed the same way as the built-in catalog: a recurrence
+  ("by end of month", "by end of quarter", ...) for Run Operations rows, or a
+  concrete FY26-27 delivery date for Change Platform/Change Business rows.
+  See `backend/app/services/ask_parsing.py` for the exact phrase mapping.
+- Every populated **Outcome N** cell on a row becomes an Outcome under that
+  Ask automatically, in column order — handy for listing out each
+  server/UPS/system as its own Outcome. Outcomes created this way start
+  unassigned ("Unassigned" in the owner dropdown) until an engineer opts in
+  and claims one.
+
+Uploading always shows a **preview** first — every row parsed, its inferred
+type/priority/dates, its Outcome count, and any warnings (unrecognized
+category, missing Ask, duplicate title) — before anything is written. From
+there, choose:
+
+- **Add** — only creates Asks whose title isn't already in the Marketplace
+  (matched per type, case-insensitively); everything else is left untouched.
+- **Overwrite** — deletes every existing Ask, Outcome, and opt-in (Run
+  Operations, Change Platform, and Change Business alike) and loads only
+  what's in the file. Engineers themselves are never deleted. This requires
+  an explicit confirmation checkbox since it can't be undone.
+
+See `backend/app/services/ask_catalog_import.py` for the parser and
+`backend/app/routers/ask_catalog_import.py` for the preview/commit endpoints.
 
 ## Running standalone on a server (no Docker) — recommended
 

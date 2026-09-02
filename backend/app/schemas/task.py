@@ -9,7 +9,7 @@ class TaskBase(BaseModel):
     title: str
     description: str | None = None
     stage: TaskStage | None = None
-    owner_engineer_id: int
+    owner_engineer_id: int | None = None
     forecast_duration_days: float | None = None
     start_date: date | None = None
     delivery_date: date | None = None

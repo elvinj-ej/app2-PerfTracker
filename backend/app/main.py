@@ -18,6 +18,7 @@ mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("image/svg+xml", ".svg")
 from app.routers import (
+    ask_catalog_import,
     engineers,
     initiative_import,
     kbi,
@@ -44,6 +45,7 @@ api_app.add_middleware(
 
 api_app.include_router(engineers.router)
 api_app.include_router(initiative_import.router)
+api_app.include_router(ask_catalog_import.router)
 api_app.include_router(platform_categories.router)
 api_app.include_router(recurring_ops_categories.router)
 api_app.include_router(kbi_categories.router)

@@ -47,6 +47,8 @@ def upsert_time_entry(
         raise HTTPException(status_code=404, detail="Task not found")
 
     engineer_id = _resolve_engineer_id(actor, payload.engineer_id)
+    if task.owner_engineer_id is None:
+        raise HTTPException(status_code=400, detail="This outcome has no owner yet - assign an engineer before logging time against it")
     if engineer_id != task.owner_engineer_id:
         raise HTTPException(status_code=400, detail="Only the task's owning engineer may log time against it")
 

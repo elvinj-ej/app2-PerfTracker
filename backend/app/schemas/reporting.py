@@ -74,8 +74,8 @@ class MonthlyTaskDetail(BaseModel):
     initiative_id: int
     title: str
     stage: TaskStage | None
-    owner_engineer_id: int
-    owner_engineer_name: str
+    owner_engineer_id: int | None
+    owner_engineer_name: str | None
     forecast_duration_days: float | None
     status: TaskStatus
     hours_this_month: float

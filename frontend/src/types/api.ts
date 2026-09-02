@@ -92,7 +92,7 @@ export interface Task {
   title: string
   description: string | null
   stage: TaskStage | null
-  owner_engineer_id: number
+  owner_engineer_id: number | null
   forecast_duration_days: number | null
   start_date: string | null
   delivery_date: string | null
@@ -193,8 +193,8 @@ export interface MonthlyTaskDetail {
   initiative_id: number
   title: string
   stage: TaskStage | null
-  owner_engineer_id: number
-  owner_engineer_name: string
+  owner_engineer_id: number | null
+  owner_engineer_name: string | null
   forecast_duration_days: number | null
   status: TaskStatus
   hours_this_month: number
@@ -229,4 +229,40 @@ export interface JiraImportPreview {
   priority: string | null
   suggested_status: string
   skipped_linked_issues: number
+}
+
+export type AskCatalogImportMode = 'overwrite' | 'add'
+
+export interface AskCatalogRowPreview {
+  row_number: number
+  category: string
+  ask: string
+  by_date: string | null
+  initiative_type: InitiativeType | null
+  priority: string
+  recurrence_type: string | null
+  expected_delivery_date: string | null
+  note: string | null
+  outcomes: string[]
+  warnings: string[]
+}
+
+export interface AskCatalogPreviewResponse {
+  rows: AskCatalogRowPreview[]
+  run_count: number
+  platform_count: number
+  business_count: number
+  skipped_count: number
+  total_outcomes: number
+}
+
+export interface AskCatalogCommitResult {
+  mode: AskCatalogImportMode
+  run_count: number
+  platform_count: number
+  business_count: number
+  outcomes_created: number
+  categories_created: number
+  skipped_existing_asks: string[]
+  skipped_unclassified_rows: number
 }

@@ -6,7 +6,7 @@ export interface TaskPayload {
   title: string
   description?: string | null
   stage?: string | null
-  owner_engineer_id: number
+  owner_engineer_id: number | null
   forecast_duration_days?: number | null
   start_date?: string | null
   delivery_date?: string | null

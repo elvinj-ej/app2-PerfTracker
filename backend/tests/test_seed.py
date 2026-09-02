@@ -4,48 +4,48 @@ from app.models import Initiative, KbiCategory, PlatformInitiativeCategory, Recu
 from app.models.enums import InitiativeType, Priority, RecurrenceType
 from app.services.initiatives import query_by_type, to_kbi_read, to_platform_read, to_recurring_ops_read
 from app.services.outcome_dates import validate_within_ask_timeline
-from app.services.seed import (
+from app.services.ask_parsing import (
     FY_END,
     FY_FEB_END,
     FY_H1_END,
     FY_Q1_END,
-    _infer_priority,
-    _parse_change_delivery,
-    _parse_run_cadence,
-    seed,
+    infer_priority,
+    parse_change_delivery,
+    parse_run_cadence,
 )
+from app.services.seed import seed
 
 
 def test_parse_run_cadence_maps_known_phrases():
-    assert _parse_run_cadence("By end of day") == RecurrenceType.DAILY
-    assert _parse_run_cadence("By end of month") == RecurrenceType.MONTHLY
-    assert _parse_run_cadence("By end of quarter") == RecurrenceType.QUARTERLY
-    assert _parse_run_cadence("By end of half year") == RecurrenceType.HALF_YEARLY
-    assert _parse_run_cadence("By end of year") == RecurrenceType.ANNUAL
+    assert parse_run_cadence("By end of day") == RecurrenceType.DAILY
+    assert parse_run_cadence("By end of month") == RecurrenceType.MONTHLY
+    assert parse_run_cadence("By end of quarter") == RecurrenceType.QUARTERLY
+    assert parse_run_cadence("By end of half year") == RecurrenceType.HALF_YEARLY
+    assert parse_run_cadence("By end of year") == RecurrenceType.ANNUAL
 
 
 def test_parse_run_cadence_falls_back_to_ad_hoc():
-    assert _parse_run_cadence(None) == RecurrenceType.AD_HOC
-    assert _parse_run_cadence("some unrelated note") == RecurrenceType.AD_HOC
+    assert parse_run_cadence(None) == RecurrenceType.AD_HOC
+    assert parse_run_cadence("some unrelated note") == RecurrenceType.AD_HOC
 
 
 def test_parse_change_delivery_maps_known_phrases_to_fy26_27_dates():
-    assert _parse_change_delivery("By end of quarter") == (FY_Q1_END, None)
-    assert _parse_change_delivery("By end of half year") == (FY_H1_END, None)
-    assert _parse_change_delivery("By end of year") == (FY_END, None)
-    assert _parse_change_delivery("By Feb") == (FY_FEB_END, None)
+    assert parse_change_delivery("By end of quarter") == (FY_Q1_END, None)
+    assert parse_change_delivery("By end of half year") == (FY_H1_END, None)
+    assert parse_change_delivery("By end of year") == (FY_END, None)
+    assert parse_change_delivery("By Feb") == (FY_FEB_END, None)
 
 
 def test_parse_change_delivery_falls_back_to_fy_end_and_keeps_notes():
-    assert _parse_change_delivery(None) == (FY_END, None)
-    assert _parse_change_delivery("ChengDu Go Live") == (FY_END, "ChengDu Go Live")
+    assert parse_change_delivery(None) == (FY_END, None)
+    assert parse_change_delivery("ChengDu Go Live") == (FY_END, "ChengDu Go Live")
 
 
 def test_infer_priority_keyword_rules():
-    assert _infer_priority("Run IAM", "Half Year Access review of Hosting Platforms") == Priority.CRITICAL
-    assert _infer_priority("Change Platform - OS WINDOWS", "Update of Windows 2016 & 2019 Servers to 2025") == Priority.HIGH
-    assert _infer_priority("Change Platform - CommVault", 'Evaluate "updating immutability policy"') == Priority.LOW
-    assert _infer_priority("Change Business", "Sales Customer 360") == Priority.MEDIUM
+    assert infer_priority("Run IAM", "Half Year Access review of Hosting Platforms") == Priority.CRITICAL
+    assert infer_priority("Change Platform - OS WINDOWS", "Update of Windows 2016 & 2019 Servers to 2025") == Priority.HIGH
+    assert infer_priority("Change Platform - CommVault", 'Evaluate "updating immutability policy"') == Priority.LOW
+    assert infer_priority("Change Business", "Sales Customer 360") == Priority.MEDIUM
 
 
 def test_seed_loads_the_fy26_27_catalog_fully_unclaimed(db_session):

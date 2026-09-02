@@ -20,7 +20,9 @@ class Task(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     sequence_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     stage: Mapped[TaskStage | None] = mapped_column(Enum(TaskStage, name="task_stage"), nullable=True)
-    owner_engineer_id: Mapped[int] = mapped_column(ForeignKey("engineers.id"), nullable=False)
+    # Nullable: an Outcome auto-created from a bulk Ask catalog upload has no owner
+    # until an engineer opts into the Ask and claims it via the owner dropdown.
+    owner_engineer_id: Mapped[int | None] = mapped_column(ForeignKey("engineers.id"), nullable=True)
     forecast_duration_days: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)

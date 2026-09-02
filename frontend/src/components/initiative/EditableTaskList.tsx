@@ -53,7 +53,7 @@ export function EditableTaskList({
   function buildPayload(title: string): TaskPayload {
     return {
       title,
-      owner_engineer_id: Number(newOwnerId),
+      owner_engineer_id: newOwnerId ? Number(newOwnerId) : null,
       forecast_duration_days: newForecast ? Number(newForecast) : null,
       start_date: newStartDate || null,
       delivery_date: newDeliveryDate || null,
@@ -163,11 +163,15 @@ export function EditableTaskList({
                   <td>{task.stage ?? '—'}</td>
                   <td>
                     <select
-                      value={task.owner_engineer_id}
+                      value={task.owner_engineer_id ?? ''}
                       onChange={(e) =>
-                        updateMutation.mutate({ taskId: task.id, payload: { owner_engineer_id: Number(e.target.value) } })
+                        updateMutation.mutate({
+                          taskId: task.id,
+                          payload: { owner_engineer_id: e.target.value ? Number(e.target.value) : null },
+                        })
                       }
                     >
+                      <option value="">Unassigned</option>
                       {engineers.map((eng) => (
                         <option key={eng.id} value={eng.id}>
                           {eng.name}

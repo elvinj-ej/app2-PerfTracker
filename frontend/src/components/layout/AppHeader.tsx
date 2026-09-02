@@ -16,7 +16,10 @@ const NAV_LINKS = [
   { to: '/log-time', label: 'Log Time' },
 ]
 
-const MANAGER_ONLY_NAV_LINKS = [{ to: '/import', label: 'Import from Jira' }]
+const MANAGER_ONLY_NAV_LINKS = [
+  { to: '/import', label: 'Import from Jira' },
+  { to: '/import/ask-catalog', label: 'Upload Marketplace' },
+]
 
 export function AppHeader() {
   const { actor, setManager, setEngineer } = useActor()

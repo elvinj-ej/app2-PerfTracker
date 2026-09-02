@@ -49,7 +49,7 @@ function MonthlyInitiativeCard({
                 <tr key={task.id}>
                   <td>{task.title}</td>
                   <td>{task.stage ?? '—'}</td>
-                  <td>{task.owner_engineer_name}</td>
+                  <td>{task.owner_engineer_name ?? 'Unassigned'}</td>
                   <td>{task.status}</td>
                   <td>{task.hours_this_month.toFixed(1)}</td>
                 </tr>

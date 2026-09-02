@@ -318,7 +318,7 @@ def build_monthly_report(db: Session, month: str) -> MonthlyReport:
             title=task.title,
             stage=task.stage,
             owner_engineer_id=task.owner_engineer_id,
-            owner_engineer_name=task.owner.name,
+            owner_engineer_name=task.owner.name if task.owner else None,
             forecast_duration_days=(
                 float(task.forecast_duration_days) if task.forecast_duration_days is not None else None
             ),
