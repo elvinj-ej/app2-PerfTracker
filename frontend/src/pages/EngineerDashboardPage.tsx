@@ -35,6 +35,8 @@ export function EngineerDashboardPage() {
   return (
     <div className="page">
       <div className="page-toolbar">
+        <h1 className="page-title">My Dashboard</h1>
+        <div className="page-toolbar-spacer" />
         <label>
           Engineer
           <select

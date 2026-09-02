@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { AppHeader } from './components/layout/AppHeader'
+import { Sidebar } from './components/layout/Sidebar'
+import { Topbar } from './components/layout/Topbar'
 import { ActorProvider } from './context/ActorContext'
 import { AskCatalogUploadPage } from './pages/AskCatalogUploadPage'
 import { EngineerDashboardPage } from './pages/EngineerDashboardPage'
@@ -23,25 +24,30 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ActorProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <AppHeader />
-          <main className="app-main">
-            <Routes>
-              <Route path="/" element={<EngineerDashboardPage />} />
-              <Route path="/marketplace" element={<MarketplacePage />} />
-              <Route path="/team" element={<TeamSummaryPage />} />
-              <Route path="/reports/monthly" element={<MonthlyReportPage />} />
-              <Route path="/kbis" element={<KbiCatalogPage />} />
-              <Route path="/kbis/:id" element={<KbiDetailPage />} />
-              <Route path="/platform-initiatives" element={<PlatformInitiativeCatalogPage />} />
-              <Route path="/platform-initiatives/:id" element={<PlatformInitiativeDetailPage />} />
-              <Route path="/recurring-ops" element={<RecurringOpsCatalogPage />} />
-              <Route path="/recurring-ops/:id" element={<RecurringOpsDetailPage />} />
-              <Route path="/log-time" element={<WeeklyTimeEntryPage />} />
-              <Route path="/import" element={<ImportInitiativePage />} />
-              <Route path="/import/ask-catalog" element={<AskCatalogUploadPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
+          <div className="app-shell">
+            <Sidebar />
+            <div className="app-content-col">
+              <Topbar />
+              <main className="app-main">
+                <Routes>
+                  <Route path="/" element={<EngineerDashboardPage />} />
+                  <Route path="/marketplace" element={<MarketplacePage />} />
+                  <Route path="/team" element={<TeamSummaryPage />} />
+                  <Route path="/reports/monthly" element={<MonthlyReportPage />} />
+                  <Route path="/kbis" element={<KbiCatalogPage />} />
+                  <Route path="/kbis/:id" element={<KbiDetailPage />} />
+                  <Route path="/platform-initiatives" element={<PlatformInitiativeCatalogPage />} />
+                  <Route path="/platform-initiatives/:id" element={<PlatformInitiativeDetailPage />} />
+                  <Route path="/recurring-ops" element={<RecurringOpsCatalogPage />} />
+                  <Route path="/recurring-ops/:id" element={<RecurringOpsDetailPage />} />
+                  <Route path="/log-time" element={<WeeklyTimeEntryPage />} />
+                  <Route path="/import" element={<ImportInitiativePage />} />
+                  <Route path="/import/ask-catalog" element={<AskCatalogUploadPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </main>
+            </div>
+          </div>
         </BrowserRouter>
       </ActorProvider>
     </QueryClientProvider>

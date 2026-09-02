@@ -14,7 +14,9 @@ export function TeamSummaryPage() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Hosting &amp; Platform Team Summary</h1>
+      <div className="page-toolbar">
+        <h1 className="page-title">Hosting &amp; Platform Team Summary</h1>
+      </div>
 
       {isLoading && <p>Loading team summary…</p>}
       {isError && <p className="text-error">Failed to load team summary.</p>}
