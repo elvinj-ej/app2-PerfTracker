@@ -1,5 +1,5 @@
 """Loads the Hosting & Platform team's real FY26-27 Ask catalog (see
-`app/data/fy2627_asks.py`) as the tool's starting data: the 3 named engineers, the
+`app/data/fy2627_asks.py`) as the tool's starting data: the named engineers, the
 category lookups derived from the catalog, and every Ask as an unclaimed, marketplace-
 ready initiative. Deliberately carries no seeded outcomes or opt-ins - engineers pick
 their own Asks (and define their own Outcomes) from the Marketplace. Safe to re-run: it
@@ -167,11 +167,21 @@ def _get_or_create_category(db: Session, cache: dict[str, object], model, name: 
 def seed(db: Session) -> None:
     _clear_all(db)
 
-    # Kept as-is - the 3 named engineers stay, only the initiative/outcome data changes.
     engineers = [
-        Engineer(name="Priya Nandakumar", email="priya.nandakumar@example.com", title="Senior Systems Engineer"),
-        Engineer(name="Marcus Fell", email="marcus.fell@example.com", title="Senior Systems Engineer"),
-        Engineer(name="Aisha Okonkwo", email="aisha.okonkwo@example.com", title="Senior Systems Engineer"),
+        Engineer(name="David Raddoux", email="david.raddoux@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Junling Yu", email="junling.yu@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Luke Winters", email="luke.winters@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Mark Whittaker", email="mark.whittaker@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Mary Ghasemi", email="mary.ghasemi@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Mung Cheong Soh", email="mung.cheong.soh@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Ravi Shanker", email="ravi.shanker@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Stanley Lim", email="stanley.lim@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Jeff Tan", email="jeff.tan@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Nagalingam Subramaniam", email="nagalingam.subramaniam@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Kok Seong Ching", email="kok.seong.ching@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Huong Ping Ting", email="huong.ping.ting@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Hazwan Abd Wahid", email="hazwan.abd.wahid@example.com", title="Senior Systems Engineer"),
+        Engineer(name="Syed Ferouq", email="syed.ferouq@example.com", title="Senior Systems Engineer"),
     ]
     db.add_all(engineers)
     db.flush()

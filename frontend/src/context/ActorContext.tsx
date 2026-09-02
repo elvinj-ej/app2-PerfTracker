@@ -1,24 +1,32 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { MANAGER_NAMES } from '../data/managers'
 
-export type Actor = { role: 'manager' } | { role: 'engineer'; engineerId: number; engineerName: string }
+export type Actor =
+  | { role: 'manager'; managerName: string }
+  | { role: 'engineer'; engineerId: number; engineerName: string }
 
 interface ActorContextValue {
   actor: Actor
-  setManager: () => void
+  setManager: (managerName: string) => void
   setEngineer: (engineerId: number, engineerName: string) => void
 }
 
 const STORAGE_KEY = 'perftracker.actor'
+const DEFAULT_ACTOR: Actor = { role: 'manager', managerName: MANAGER_NAMES[0] }
 
 const ActorContext = createContext<ActorContextValue | undefined>(undefined)
 
 function loadStoredActor(): Actor {
   const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return { role: 'manager' }
+  if (!raw) return DEFAULT_ACTOR
   try {
-    return JSON.parse(raw) as Actor
+    const parsed = JSON.parse(raw) as Actor
+    // Older stored actors predate named managers - fall back rather than carry a
+    // manager with no name into the new switcher.
+    if (parsed.role === 'manager' && !parsed.managerName) return DEFAULT_ACTOR
+    return parsed
   } catch {
-    return { role: 'manager' }
+    return DEFAULT_ACTOR
   }
 }
 
@@ -32,7 +40,7 @@ export function ActorProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ActorContextValue>(
     () => ({
       actor,
-      setManager: () => setActor({ role: 'manager' }),
+      setManager: (managerName) => setActor({ role: 'manager', managerName }),
       setEngineer: (engineerId, engineerName) => setActor({ role: 'engineer', engineerId, engineerName }),
     }),
     [actor],

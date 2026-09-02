@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react'
 import { NavLink } from 'react-router-dom'
 import { listEngineers } from '../../api/engineers'
 import { useActor } from '../../context/ActorContext'
+import { MANAGER_NAMES } from '../../data/managers'
 
 const NAV_LINKS = [
   { to: '/', label: 'My Dashboard' },
@@ -21,13 +22,13 @@ export function AppHeader() {
   const { actor, setManager, setEngineer } = useActor()
   const { data: engineers } = useQuery({
     queryKey: ['engineers'],
-    queryFn: () => listEngineers({ role: 'manager' }),
+    queryFn: () => listEngineers({ role: 'manager', managerName: MANAGER_NAMES[0] }),
   })
 
   function handleChange(event: ChangeEvent<HTMLSelectElement>) {
     const value = event.target.value
-    if (value === 'manager') {
-      setManager()
+    if (value.startsWith('manager:')) {
+      setManager(value.slice('manager:'.length))
       return
     }
     const engineer = engineers?.find((eng) => String(eng.id) === value)
@@ -36,7 +37,7 @@ export function AppHeader() {
     }
   }
 
-  const currentValue = actor.role === 'manager' ? 'manager' : String(actor.engineerId)
+  const currentValue = actor.role === 'manager' ? `manager:${actor.managerName}` : String(actor.engineerId)
 
   return (
     <header className="app-header">
@@ -45,12 +46,20 @@ export function AppHeader() {
         <label className="actor-switcher">
           Viewing as
           <select value={currentValue} onChange={handleChange}>
-            <option value="manager">Manager</option>
-            {engineers?.map((eng) => (
-              <option key={eng.id} value={eng.id}>
-                {eng.name}
-              </option>
-            ))}
+            <optgroup label="Manager">
+              {MANAGER_NAMES.map((name) => (
+                <option key={name} value={`manager:${name}`}>
+                  {name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Engineer">
+              {engineers?.map((eng) => (
+                <option key={eng.id} value={eng.id}>
+                  {eng.name}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </label>
       </div>

@@ -5,12 +5,13 @@ import { getEngineerDashboard } from '../api/reports'
 import { InitiativeTable } from '../components/initiative/InitiativeTable'
 import { TaskTable } from '../components/initiative/TaskTable'
 import { useActor } from '../context/ActorContext'
+import { MANAGER_NAMES } from '../data/managers'
 
 export function EngineerDashboardPage() {
   const { actor } = useActor()
   const { data: engineers } = useQuery({
     queryKey: ['engineers'],
-    queryFn: () => listEngineers({ role: 'manager' }),
+    queryFn: () => listEngineers({ role: 'manager', managerName: MANAGER_NAMES[0] }),
   })
 
   const [selectedEngineerId, setSelectedEngineerId] = useState<number | undefined>(
