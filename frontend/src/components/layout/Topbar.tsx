@@ -6,6 +6,15 @@ import { useActor } from '../../context/ActorContext'
 import { MANAGER_NAMES } from '../../data/managers'
 import { findNavLabel } from './navConfig'
 
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? '')
+    .join('')
+}
+
 export function Topbar() {
   const { actor, setManager, setEngineer } = useActor()
   const location = useLocation()
@@ -28,12 +37,14 @@ export function Topbar() {
 
   const currentValue = actor.role === 'manager' ? `manager:${actor.managerName}` : String(actor.engineerId)
   const sectionLabel = findNavLabel(location.pathname) ?? 'My Dashboard'
+  const actorDisplayName = actor.role === 'manager' ? actor.managerName : actor.engineerName
 
   return (
     <header className="app-topbar">
       <div className="app-topbar-crumb">{sectionLabel}</div>
-      <label className="actor-switcher">
-        Viewing as
+      <label className="actor-chip">
+        <span className="actor-chip-avatar">{initials(actorDisplayName)}</span>
+        <span className="actor-chip-label">Viewing as</span>
         <select value={currentValue} onChange={handleChange}>
           <optgroup label="Manager">
             {MANAGER_NAMES.map((name) => (

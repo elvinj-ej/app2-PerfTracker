@@ -5,6 +5,7 @@ import { listEngineers } from '../api/engineers'
 import { listKbis, optInKbi, optOutKbi } from '../api/kbis'
 import { listPlatformInitiatives, optInPlatformInitiative, optOutPlatformInitiative } from '../api/platformInitiatives'
 import { listRecurringOps, optInRecurringOps, optOutRecurringOps } from '../api/recurringOps'
+import { CategoryPill } from '../components/common/CategoryPill'
 import { CATEGORY_META } from '../components/charts/categoryMeta'
 import { useActor } from '../context/ActorContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -29,6 +30,15 @@ const PRIORITY_BADGE: Record<string, string> = {
 }
 
 const PRIORITY_RANK: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
+
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? '')
+    .join('')
+}
 
 interface MarketplaceRow {
   key: string
@@ -114,6 +124,9 @@ export function MarketplacePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kbisQuery.data, platformQuery.data, runOpsQuery.data, actor])
 
+  const unclaimedCount = rows.filter((r) => r.engineerIds.length === 0).length
+  const criticalOpenCount = rows.filter((r) => r.priority === 'CRITICAL' && r.engineerIds.length === 0).length
+
   const normalizedKeyword = keyword.trim().toLowerCase()
 
   const filtered = rows.filter((r) => {
@@ -154,15 +167,29 @@ export function MarketplacePage() {
 
   return (
     <div className="page">
-      <div className="page-toolbar">
-        <h1 className="page-title">Marketplace</h1>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Marketplace</h1>
+          <p className="page-subtitle" style={{ maxWidth: 720 }}>
+            Every Ask across Run Operations, Change Business, and Change Platform in one place — pick
+            up unclaimed work, or browse what teammates are already covering. Any Ask can take several
+            engineers, each delivering a different Outcome, so a row stays here — marked "Already
+            assigned" — even once someone else has opted in.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div className="kpi-tile" style={{ minWidth: 120 }}>
+            <span className="kpi-label">Unclaimed</span>
+            <span className="kpi-value">{unclaimedCount}</span>
+          </div>
+          <div className="kpi-tile" style={{ minWidth: 120 }}>
+            <span className="kpi-label">Critical open</span>
+            <span className="kpi-value" style={{ color: 'var(--red)' }}>
+              {criticalOpenCount}
+            </span>
+          </div>
+        </div>
       </div>
-      <p className="text-muted marketplace-intro">
-        Every Ask across Run Operations, Change Business, and Change Platform in one place — pick
-        up unclaimed work, or browse what teammates are already covering. Any Ask can take several
-        engineers, each delivering a different Outcome, so a row stays here — marked "Already
-        assigned" — even once someone else has opted in.
-      </p>
 
       <div className="marketplace-filters">
         <button
@@ -177,6 +204,7 @@ export function MarketplacePage() {
             className={`marketplace-filter-tab ${typeFilter === meta.type ? 'marketplace-filter-tab-active' : ''}`}
             onClick={() => setTypeFilter(meta.type)}
           >
+            <span className="category-pill-dot" style={{ background: `var(${meta.varName})`, marginRight: 6 }} />
             {meta.label}
           </button>
         ))}
@@ -204,7 +232,6 @@ export function MarketplacePage() {
               <thead>
                 <tr>
                   <th>Ask</th>
-                  <th>Category</th>
                   <th>Priority</th>
                   <th>Cadence / Delivery</th>
                   <th>Assigned</th>
@@ -214,12 +241,18 @@ export function MarketplacePage() {
               <tbody>
                 {filtered.map((row) => {
                   const isOptedIn = actor.role === 'engineer' && row.engineerIds.includes(actor.engineerId)
+                  const shownEngineers = row.engineerIds.slice(0, 2)
+                  const extraCount = row.engineerIds.length - shownEngineers.length
                   return (
-                    <tr key={row.key}>
+                    <tr key={row.key} className={row.engineerIds.length > 0 ? 'row-claimed' : undefined}>
                       <td className="marketplace-ask-cell">
-                        <Link to={row.detailPath}>{row.title}</Link>
+                        <div className="cell-primary">
+                          <Link className="cell-title" to={row.detailPath}>
+                            {row.title}
+                          </Link>
+                          <CategoryPill type={row.type} detail={row.categoryName} />
+                        </div>
                       </td>
-                      <td>{row.categoryName}</td>
                       <td>
                         {row.priority && (
                           <span className={`badge ${PRIORITY_BADGE[row.priority] ?? 'badge-gray'}`}>{row.priority}</span>
@@ -227,9 +260,18 @@ export function MarketplacePage() {
                       </td>
                       <td>{row.cadenceLabel}</td>
                       <td className="marketplace-assigned-cell">
-                        {row.engineerIds.length === 0
-                          ? 'Unclaimed'
-                          : `Already assigned: ${row.engineerIds.map(engineerName).join(', ')}`}
+                        {row.engineerIds.length === 0 ? (
+                          <span className="text-muted">Unclaimed</span>
+                        ) : (
+                          <div className="assignee-list">
+                            {shownEngineers.map((id) => (
+                              <span key={id} className="assignee-avatar" title={engineerName(id)}>
+                                {initials(engineerName(id))}
+                              </span>
+                            ))}
+                            {extraCount > 0 && <span className="text-muted">+{extraCount}</span>}
+                          </div>
+                        )}
                       </td>
                       <td>
                         {actor.role === 'engineer' && (

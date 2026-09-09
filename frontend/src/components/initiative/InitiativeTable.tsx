@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { CategoryPill } from '../common/CategoryPill'
 import { ProgressBar } from '../charts/ProgressBar'
 import { TimelineHealthBadge } from '../charts/TimelineHealthBadge'
 import type { InitiativeSummary, InitiativeType } from '../../types/api'
@@ -18,13 +19,11 @@ function detailPath(type: InitiativeType, id: number): string {
 export function InitiativeTable({
   title,
   rows,
-  showCategory,
   emptyMessage,
   emptyAction,
 }: {
   title: string
   rows: InitiativeSummary[]
-  showCategory?: boolean
   emptyMessage?: string
   emptyAction?: ReactNode
 }) {
@@ -42,7 +41,6 @@ export function InitiativeTable({
             <thead>
               <tr>
                 <th>Ask</th>
-                {showCategory && <th>Category</th>}
                 <th>Status</th>
                 <th>Completion</th>
                 <th>Timeline</th>
@@ -54,18 +52,20 @@ export function InitiativeTable({
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td>
-                    <Link to={detailPath(row.type, row.id)}>{row.title}</Link>
+                    <div className="cell-primary">
+                      <Link className="cell-title" to={detailPath(row.type, row.id)}>{row.title}</Link>
+                      <CategoryPill type={row.type} detail={row.category_name} />
+                    </div>
                   </td>
-                  {showCategory && <td>{row.category_name ?? '—'}</td>}
                   <td>{row.status}</td>
                   <td>
-                    <ProgressBar pct={row.completion_pct} />
+                    <ProgressBar pct={row.completion_pct} behind={row.timeline_health === 'BEHIND'} />
                   </td>
                   <td>
                     <TimelineHealthBadge health={row.timeline_health} />
                   </td>
                   <td>{row.expected_delivery_date ?? '—'}</td>
-                  <td>{row.total_hours_logged.toFixed(1)}</td>
+                  <td className="num">{row.total_hours_logged.toFixed(1)}</td>
                 </tr>
               ))}
             </tbody>
