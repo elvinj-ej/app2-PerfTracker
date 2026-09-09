@@ -26,6 +26,23 @@ pip install --quiet -r requirements.txt
 if not exist .env (
     copy .env.example .env >nul
     echo Created backend\.env - edit it to set ANTHROPIC_API_KEY if you want AI task breakdowns.
+) else (
+    REM An existing .env is never overwritten, so a pre-AOSE-rename .env still has the
+    REM old DATABASE_URL/URL_PREFIX values baked in verbatim - renaming the .db file on
+    REM disk alone doesn't help if .env still points at the old filename (SQLite would
+    REM silently create a fresh, empty perftracker.db instead of erroring, which looks
+    REM exactly like "all my data disappeared"). Only rewrites these two exact old
+    REM default lines if found as-is, so a deliberately customized value is left alone.
+    findstr /C:"DATABASE_URL=sqlite:///./perftracker.db" .env >nul
+    if not errorlevel 1 (
+        powershell -NoProfile -Command "(Get-Content .env) -replace [regex]::Escape('DATABASE_URL=sqlite:///./perftracker.db'), 'DATABASE_URL=sqlite:///./aose.db' | Set-Content .env"
+        echo Updated backend\.env: DATABASE_URL now points to aose.db instead of perftracker.db.
+    )
+    findstr /C:"URL_PREFIX=/PerfTracker" .env >nul
+    if not errorlevel 1 (
+        powershell -NoProfile -Command "(Get-Content .env) -replace [regex]::Escape('URL_PREFIX=/PerfTracker'), 'URL_PREFIX=/AOSE' | Set-Content .env"
+        echo Updated backend\.env: URL_PREFIX now /AOSE instead of /PerfTracker.
+    )
 )
 
 echo.

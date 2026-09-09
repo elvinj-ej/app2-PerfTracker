@@ -11,6 +11,13 @@ if exist perftracker.db (
         echo Renamed backend\perftracker.db to backend\aose.db - the app is now named AOSE.
     )
 )
+if exist .env (
+    findstr /C:"DATABASE_URL=sqlite:///./perftracker.db" .env >nul
+    if not errorlevel 1 (
+        powershell -NoProfile -Command "(Get-Content .env) -replace [regex]::Escape('DATABASE_URL=sqlite:///./perftracker.db'), 'DATABASE_URL=sqlite:///./aose.db' | Set-Content .env"
+        echo Updated backend\.env: DATABASE_URL now points to aose.db instead of perftracker.db.
+    )
+)
 if exist aose.db (
     if not exist backups mkdir backups
     for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set BACKUP_TS=%%i
