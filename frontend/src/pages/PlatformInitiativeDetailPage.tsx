@@ -203,9 +203,7 @@ export function PlatformInitiativeDetailPage() {
           initiativeId={initiativeId}
           tasks={tasksQuery.data}
           engineers={engineersQuery.data}
-          onGenerateBreakdown={() =>
-            generatePlatformInitiativeBreakdown(actor, initiativeId, actor.role === 'engineer' ? actor.engineerId : undefined)
-          }
+          onGenerateBreakdown={() => generatePlatformInitiativeBreakdown(actor, initiativeId)}
           invalidateKey={['tasks', initiativeId]}
         />
       )}

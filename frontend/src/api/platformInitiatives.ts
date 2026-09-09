@@ -55,11 +55,8 @@ export function optOutPlatformInitiative(actor: Actor, id: number, engineerId?: 
   })
 }
 
-export function generatePlatformInitiativeBreakdown(actor: Actor, id: number, defaultOwnerEngineerId?: number) {
-  return apiFetch(`/api/platform-initiatives/${id}/tasks/generate-ai-breakdown`, actor, {
-    method: 'POST',
-    body: JSON.stringify({ default_owner_engineer_id: defaultOwnerEngineerId ?? null }),
-  })
+export function generatePlatformInitiativeBreakdown(actor: Actor, id: number) {
+  return apiFetch(`/api/platform-initiatives/${id}/tasks/generate-ai-breakdown`, actor, { method: 'POST' })
 }
 
 export function listPlatformCategories(actor: Actor): Promise<PlatformInitiativeCategory[]> {

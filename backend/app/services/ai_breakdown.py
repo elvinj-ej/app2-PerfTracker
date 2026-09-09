@@ -146,13 +146,18 @@ class TaskBreakdownService:
 def generate_and_persist_breakdown(
     db: Session,
     initiative: Initiative,
-    default_owner_engineer_id: int,
     category_name: str | None = None,
     service: TaskBreakdownService | None = None,
 ) -> list[Task]:
     """Calls the AI breakdown service and persists the result as editable Task rows
     (is_ai_generated=True), continuing sequence_order after any existing tasks. Also
     logs the raw response to ai_breakdown_requests for debuggability.
+
+    Created Outcomes start unowned (owner_engineer_id=None) - same as the Marketplace
+    upload's auto-created Outcomes - since ownership here is a self-service pick: an
+    engineer opts into the Ask and then claims whichever of the proposed Outcomes they
+    want to be responsible for via the owner dropdown, rather than the person who
+    triggered the breakdown (often a manager) assigning them upfront.
     """
     service = service or TaskBreakdownService()
 
@@ -190,7 +195,7 @@ def generate_and_persist_breakdown(
             title=suggestion.title,
             description=suggestion.description,
             stage=suggestion.stage,
-            owner_engineer_id=default_owner_engineer_id,
+            owner_engineer_id=None,
             forecast_duration_days=suggestion.forecast_duration_days,
             start_date=start_date,
             delivery_date=delivery_date,

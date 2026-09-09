@@ -1,7 +1,7 @@
 from datetime import date
 from unittest.mock import MagicMock
 
-from app.models import Engineer, Initiative
+from app.models import Initiative
 from app.models.enums import InitiativeStatus, InitiativeType
 from app.services.ai_breakdown import TaskBreakdownService, generate_and_persist_breakdown
 from app.services.outcome_dates import validate_delivery_span
@@ -43,10 +43,6 @@ def test_generate_parses_tool_use_response_into_suggested_tasks():
 
 
 def test_generate_and_persist_breakdown_creates_editable_task_rows(db_session):
-    engineer = Engineer(name="Test Engineer", email="test@example.com")
-    db_session.add(engineer)
-    db_session.flush()
-
     initiative = Initiative(title="Test KBI", type=InitiativeType.KBI, status=InitiativeStatus.DRAFT)
     db_session.add(initiative)
     db_session.flush()
@@ -55,19 +51,17 @@ def test_generate_and_persist_breakdown_creates_editable_task_rows(db_session):
     client.messages.create.return_value = _fake_anthropic_response(FAKE_TASKS)
     service = TaskBreakdownService(client=client)
 
-    created = generate_and_persist_breakdown(db_session, initiative, engineer.id, service=service)
+    created = generate_and_persist_breakdown(db_session, initiative, service=service)
 
     assert len(created) == 2
     assert all(t.is_ai_generated is True for t in created)
-    assert all(t.owner_engineer_id == engineer.id for t in created)
+    # Ownership is self-service: an AI-generated Outcome starts unassigned until an
+    # engineer opts into the Ask and claims it, same as an uploaded Ask catalog's Outcomes.
+    assert all(t.owner_engineer_id is None for t in created)
     assert [t.sequence_order for t in created] == [0, 1]
 
 
 def test_generate_and_persist_breakdown_assigns_sequential_wednesday_windows(db_session):
-    engineer = Engineer(name="Test Engineer", email="test2@example.com")
-    db_session.add(engineer)
-    db_session.flush()
-
     initiative = Initiative(
         title="Test KBI",
         type=InitiativeType.KBI,
@@ -81,7 +75,7 @@ def test_generate_and_persist_breakdown_assigns_sequential_wednesday_windows(db_
     client.messages.create.return_value = _fake_anthropic_response(FAKE_TASKS)
     service = TaskBreakdownService(client=client)
 
-    created = generate_and_persist_breakdown(db_session, initiative, engineer.id, service=service)
+    created = generate_and_persist_breakdown(db_session, initiative, service=service)
 
     assert created[0].start_date == date(2026, 8, 5)  # rolled forward to the next Wednesday
     assert created[0].delivery_date == date(2026, 8, 19)

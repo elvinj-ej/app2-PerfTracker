@@ -116,7 +116,8 @@ export function EditableTaskList({
         An Outcome answers the initiative's Ask. Delivery must land within two weeks of the start
         date, and both dates must fall on a Wednesday — split larger work into multiple Outcomes.
         Working through a list of similar items (servers, UPS units, ...)? Use "Add multiple at
-        once" below to create one Outcome per item in a single step.
+        once" below to create one Outcome per item in a single step. Generated or bulk-created
+        Outcomes start Unassigned — an engineer claims the ones they want via the Owner column.
       </p>
       {generateMutation.isError && (
         <p className="text-error">{(generateMutation.error as Error).message}</p>

@@ -50,9 +50,6 @@ export function optOutKbi(actor: Actor, id: number, engineerId?: number): Promis
   })
 }
 
-export function generateKbiBreakdown(actor: Actor, id: number, defaultOwnerEngineerId?: number) {
-  return apiFetch(`/api/kbis/${id}/tasks/generate-ai-breakdown`, actor, {
-    method: 'POST',
-    body: JSON.stringify({ default_owner_engineer_id: defaultOwnerEngineerId ?? null }),
-  })
+export function generateKbiBreakdown(actor: Actor, id: number) {
+  return apiFetch(`/api/kbis/${id}/tasks/generate-ai-breakdown`, actor, { method: 'POST' })
 }

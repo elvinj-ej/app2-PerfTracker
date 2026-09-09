@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models import Engineer, Initiative, PlatformInitiativeCategory, PlatformInitiativeDetail
 from app.models.enums import InitiativeType
 from app.schemas.initiative import PlatformInitiativeCreate, PlatformInitiativeRead, PlatformInitiativeUpdate
-from app.schemas.opt_in import GenerateBreakdownRequest, OptInRequest
+from app.schemas.opt_in import OptInRequest
 from app.schemas.task import TaskRead
 from app.services.ai_breakdown import AiBreakdownError, generate_and_persist_breakdown
 from app.services.initiatives import opt_in as _opt_in
@@ -126,19 +126,12 @@ def opt_out_platform_initiative(
 @router.post("/{initiative_id}/tasks/generate-ai-breakdown", response_model=list[TaskRead], status_code=201)
 def generate_platform_initiative_breakdown(
     initiative_id: int,
-    payload: GenerateBreakdownRequest,
     db: Session = Depends(get_db),
-    actor: Actor = Depends(get_current_actor),
 ):
     initiative = _get_platform_initiative_or_404(db, initiative_id)
-    owner_id = payload.default_owner_engineer_id if payload.default_owner_engineer_id is not None else actor.engineer_id
-    if owner_id is None:
-        raise HTTPException(status_code=400, detail="default_owner_engineer_id is required")
-    if db.get(Engineer, owner_id) is None:
-        raise HTTPException(status_code=404, detail="default_owner_engineer_id does not reference a known engineer")
     try:
         return generate_and_persist_breakdown(
-            db, initiative, owner_id, category_name=initiative.platform_detail.category.name
+            db, initiative, category_name=initiative.platform_detail.category.name
         )
     except AiBreakdownError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

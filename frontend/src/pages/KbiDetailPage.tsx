@@ -218,9 +218,7 @@ export function KbiDetailPage() {
           initiativeId={initiativeId}
           tasks={tasksQuery.data}
           engineers={engineersQuery.data}
-          onGenerateBreakdown={() =>
-            generateKbiBreakdown(actor, initiativeId, actor.role === 'engineer' ? actor.engineerId : undefined)
-          }
+          onGenerateBreakdown={() => generateKbiBreakdown(actor, initiativeId)}
           invalidateKey={['tasks', initiativeId]}
         />
       )}

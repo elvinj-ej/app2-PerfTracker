@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models import Engineer, Initiative, KbiCategory, KbiDetail
 from app.models.enums import InitiativeType
 from app.schemas.initiative import KbiCreate, KbiRead, KbiUpdate
-from app.schemas.opt_in import GenerateBreakdownRequest, OptInRequest
+from app.schemas.opt_in import OptInRequest
 from app.schemas.task import TaskRead
 from app.services.ai_breakdown import AiBreakdownError, generate_and_persist_breakdown
 from app.services.initiatives import opt_in as _opt_in
@@ -126,19 +126,10 @@ def opt_out_kbi(
 @router.post("/{kbi_id}/tasks/generate-ai-breakdown", response_model=list[TaskRead], status_code=201)
 def generate_kbi_breakdown(
     kbi_id: int,
-    payload: GenerateBreakdownRequest,
     db: Session = Depends(get_db),
-    actor: Actor = Depends(get_current_actor),
 ):
     initiative = _get_kbi_or_404(db, kbi_id)
-    owner_id = payload.default_owner_engineer_id if payload.default_owner_engineer_id is not None else actor.engineer_id
-    if owner_id is None:
-        raise HTTPException(status_code=400, detail="default_owner_engineer_id is required")
-    if db.get(Engineer, owner_id) is None:
-        raise HTTPException(status_code=404, detail="default_owner_engineer_id does not reference a known engineer")
     try:
-        return generate_and_persist_breakdown(
-            db, initiative, owner_id, category_name=initiative.kbi_detail.category.name
-        )
+        return generate_and_persist_breakdown(db, initiative, category_name=initiative.kbi_detail.category.name)
     except AiBreakdownError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
