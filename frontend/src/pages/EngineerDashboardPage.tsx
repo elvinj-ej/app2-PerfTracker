@@ -1,11 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { listEngineers } from '../api/engineers'
 import { getEngineerDashboard } from '../api/reports'
+import { Alert } from '../components/common/Alert'
 import { InitiativeTable } from '../components/initiative/InitiativeTable'
 import { TaskTable } from '../components/initiative/TaskTable'
 import { useActor } from '../context/ActorContext'
 import { MANAGER_NAMES } from '../data/managers'
+
+const BROWSE_MARKETPLACE = <Link to="/marketplace">Browse the Marketplace</Link>
 
 export function EngineerDashboardPage() {
   const { actor } = useActor()
@@ -54,7 +58,7 @@ export function EngineerDashboardPage() {
       </div>
 
       {dashboardQuery.isLoading && <p>Loading dashboard…</p>}
-      {dashboardQuery.isError && <p className="text-error">Failed to load dashboard.</p>}
+      {dashboardQuery.isError && <Alert variant="error">Failed to load dashboard.</Alert>}
 
       {dashboardQuery.data && (
         <>
@@ -62,20 +66,23 @@ export function EngineerDashboardPage() {
             title="Change Business"
             rows={dashboardQuery.data.kbis}
             emptyMessage="Not opted into any Change Business yet."
+            emptyAction={BROWSE_MARKETPLACE}
           />
           <InitiativeTable
             title="Change Platform"
             rows={dashboardQuery.data.platform_initiatives}
             showCategory
             emptyMessage="Not opted into any Change Platform yet."
+            emptyAction={BROWSE_MARKETPLACE}
           />
           <InitiativeTable
             title="Run Operations"
             rows={dashboardQuery.data.recurring_ops}
             showCategory
             emptyMessage="No recurring operational work assigned yet."
+            emptyAction={BROWSE_MARKETPLACE}
           />
-          <TaskTable tasks={dashboardQuery.data.tasks} />
+          <TaskTable tasks={dashboardQuery.data.tasks} emptyAction={BROWSE_MARKETPLACE} />
         </>
       )}
     </div>

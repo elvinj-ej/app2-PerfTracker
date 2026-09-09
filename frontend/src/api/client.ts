@@ -27,7 +27,7 @@ function actorHeaders(actor: Actor): HeadersInit {
 
 // API paths throughout this module are written as absolute paths from the app's own
 // root (e.g. "/api/engineers"). Resolving them against BASE_URL (which Vite sets to
-// wherever this app is actually hosted - "/" in dev, "/PerfTracker/" in production,
+// wherever this app is actually hosted - "/" in dev, "/AOSE/" in production,
 // see vite.config.ts) makes them work whether the app is served at the origin root
 // or under a path prefix alongside other internally-hosted apps.
 function resolveUrl(path: string): string {

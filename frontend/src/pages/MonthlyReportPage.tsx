@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { downloadMonthlyReportExport, getAvailableMonths, getMonthlyReport } from '../api/reports'
+import { Alert } from '../components/common/Alert'
 import { ProgressBar } from '../components/charts/ProgressBar'
 import { useActor } from '../context/ActorContext'
 import type { MonthlyInitiativeReport } from '../types/api'
@@ -112,10 +113,10 @@ export function MonthlyReportPage() {
           {isExporting ? 'Exporting…' : 'Export to Excel'}
         </button>
       </div>
-      {exportError && <p className="text-error">{exportError}</p>}
+      {exportError && <Alert variant="error">{exportError}</Alert>}
 
       {reportQuery.isLoading && <p>Loading…</p>}
-      {reportQuery.isError && <p className="text-error">Failed to load monthly report.</p>}
+      {reportQuery.isError && <Alert variant="error">Failed to load monthly report.</Alert>}
 
       {reportQuery.data && (
         <>

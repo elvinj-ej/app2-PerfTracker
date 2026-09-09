@@ -11,11 +11,13 @@ import {
   updatePlatformInitiative,
 } from '../api/platformInitiatives'
 import { listTasks } from '../api/tasks'
+import { Alert } from '../components/common/Alert'
 import { FormField } from '../components/common/FormField'
 import { EditableTaskList } from '../components/initiative/EditableTaskList'
 import { OptInButton } from '../components/initiative/OptInButton'
 import { UpgradeUnitsTable } from '../components/initiative/UpgradeUnitsTable'
 import { useActor } from '../context/ActorContext'
+import { useToast } from '../context/ToastContext'
 import type { PlatformInitiative } from '../types/api'
 
 interface EditForm {
@@ -45,6 +47,7 @@ export function PlatformInitiativeDetailPage() {
   const initiativeId = Number(id)
   const { actor } = useActor()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState<EditForm | null>(null)
 
@@ -75,6 +78,7 @@ export function PlatformInitiativeDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['platform-initiatives', initiativeId] })
       queryClient.invalidateQueries({ queryKey: ['platform-initiatives'] })
       setIsEditing(false)
+      toast.success('Ask updated')
     },
   })
 
@@ -164,7 +168,7 @@ export function PlatformInitiativeDetailPage() {
                 </select>
               </FormField>
             </div>
-            {updateMutation.isError && <p className="text-error">{(updateMutation.error as Error).message}</p>}
+            {updateMutation.isError && <Alert variant="error">{(updateMutation.error as Error).message}</Alert>}
             <div className="add-task-form">
               <button
                 className="btn btn-primary"

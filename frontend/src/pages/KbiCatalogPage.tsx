@@ -1,13 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createKbi, listKbiCategories, listKbis } from '../api/kbis'
+import { Alert } from '../components/common/Alert'
 import { FormField } from '../components/common/FormField'
+import { SortableTh } from '../components/common/SortableTh'
 import { useActor } from '../context/ActorContext'
+import { useToast } from '../context/ToastContext'
+import type { Kbi } from '../types/api'
+
+type SortKey = 'title' | 'category' | 'priority' | 'complexity' | 'delivery' | 'status'
 
 function NewKbiForm() {
   const { actor } = useActor()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const { data: categories } = useQuery({
     queryKey: ['kbi-categories'],
     queryFn: () => listKbiCategories(actor),
@@ -38,6 +45,7 @@ function NewKbiForm() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kbis'] })
+      toast.success('Change Business Ask created')
       setTitle('')
       setBusinessGoal('')
       setAsk('')
@@ -53,6 +61,7 @@ function NewKbiForm() {
   return (
     <section className="card">
       <h2>New Change Business</h2>
+      {mutation.isError && <Alert variant="error">{(mutation.error as Error).message}</Alert>}
       <div className="form-grid">
         <FormField label="Ask" hint="What needs to be delivered">
           <input placeholder="e.g. Customer Portal Migration" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -105,9 +114,42 @@ function NewKbiForm() {
   )
 }
 
+const SORT_ACCESSORS: Record<SortKey, (k: Kbi) => string> = {
+  title: (k) => k.title,
+  category: (k) => k.category.name,
+  priority: (k) => k.priority ?? '',
+  complexity: (k) => k.complexity ?? '',
+  delivery: (k) => k.expected_delivery_date ?? '',
+  status: (k) => k.status,
+}
+
 export function KbiCatalogPage() {
   const { actor } = useActor()
   const { data, isLoading } = useQuery({ queryKey: ['kbis'], queryFn: () => listKbis(actor) })
+  const [keyword, setKeyword] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('title')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  const rows = useMemo(() => {
+    const normalized = keyword.trim().toLowerCase()
+    const filtered = (data ?? []).filter((kbi) => {
+      if (!normalized) return true
+      const haystack = `${kbi.title} ${kbi.category.name} ${kbi.priority ?? ''} ${kbi.status}`.toLowerCase()
+      return haystack.includes(normalized)
+    })
+    const accessor = SORT_ACCESSORS[sortKey]
+    const sorted = [...filtered].sort((a, b) => accessor(a).localeCompare(accessor(b)))
+    return sortDir === 'asc' ? sorted : sorted.reverse()
+  }, [data, keyword, sortKey, sortDir])
 
   return (
     <div className="page">
@@ -118,37 +160,74 @@ export function KbiCatalogPage() {
       <NewKbiForm />
 
       <section className="card">
-        {isLoading && <p>Loading…</p>}
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Ask</th>
-                <th>Category</th>
-                <th>Priority</th>
-                <th>Complexity</th>
-                <th>Delivery Date</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data ?? []).map((kbi) => (
-                <tr key={kbi.id}>
-                  <td>{kbi.title}</td>
-                  <td>{kbi.category.name}</td>
-                  <td>{kbi.priority ?? '—'}</td>
-                  <td>{kbi.complexity ?? '—'}</td>
-                  <td>{kbi.expected_delivery_date ?? '—'}</td>
-                  <td>{kbi.status}</td>
-                  <td>
-                    <Link to={`/kbis/${kbi.id}`}>View</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="catalog-toolbar">
+          <input
+            className="catalog-search-input"
+            placeholder="Search Asks…"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
         </div>
+        {isLoading && <p>Loading…</p>}
+        {!isLoading && rows.length === 0 && (
+          <p className="text-muted">{keyword ? 'No Asks match your search.' : 'No Change Business Asks yet.'}</p>
+        )}
+        {rows.length > 0 && (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <SortableTh label="Ask" sortKey="title" currentKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <SortableTh
+                    label="Category"
+                    sortKey="category"
+                    currentKey={sortKey}
+                    direction={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortableTh
+                    label="Priority"
+                    sortKey="priority"
+                    currentKey={sortKey}
+                    direction={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortableTh
+                    label="Complexity"
+                    sortKey="complexity"
+                    currentKey={sortKey}
+                    direction={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortableTh
+                    label="Delivery Date"
+                    sortKey="delivery"
+                    currentKey={sortKey}
+                    direction={sortDir}
+                    onSort={handleSort}
+                  />
+                  <SortableTh label="Status" sortKey="status" currentKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((kbi) => (
+                  <tr key={kbi.id}>
+                    <td>{kbi.title}</td>
+                    <td>{kbi.category.name}</td>
+                    <td>{kbi.priority ?? '—'}</td>
+                    <td>{kbi.complexity ?? '—'}</td>
+                    <td>{kbi.expected_delivery_date ?? '—'}</td>
+                    <td>{kbi.status}</td>
+                    <td>
+                      <Link to={`/kbis/${kbi.id}`}>View</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   )

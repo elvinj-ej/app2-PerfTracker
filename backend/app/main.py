@@ -83,8 +83,8 @@ if _static_dir.is_dir():
         return FileResponse(_static_dir / "index.html")
 
 
-# When URL_PREFIX is set (e.g. "/PerfTracker", to host this app at
-# http://host:port/PerfTracker alongside other internally-hosted apps on the same
+# When URL_PREFIX is set (e.g. "/AOSE", to host this app at
+# http://host:port/AOSE alongside other internally-hosted apps on the same
 # server), the whole app above is mounted as a sub-application under that prefix.
 # Leave URL_PREFIX empty to serve at the root instead.
 _prefix = settings.url_prefix.rstrip("/")
@@ -95,5 +95,17 @@ if _prefix:
     @app.get("/")
     def redirect_to_app() -> RedirectResponse:
         return RedirectResponse(url=f"{_prefix}/")
+
+    # The app used to be hosted under /PerfTracker (its old name). Anyone with that
+    # bookmarked gets sent to wherever it lives now instead of a 404 - skipped if
+    # someone has deliberately set URL_PREFIX back to /PerfTracker.
+    _LEGACY_PREFIX = "/PerfTracker"
+    if _prefix.lower() != _LEGACY_PREFIX.lower():
+
+        @app.get(_LEGACY_PREFIX)
+        @app.get(_LEGACY_PREFIX + "/{rest:path}")
+        def redirect_legacy_prefix(rest: str = "") -> RedirectResponse:
+            return RedirectResponse(url=f"{_prefix}/{rest}")
+
 else:
     app = api_app

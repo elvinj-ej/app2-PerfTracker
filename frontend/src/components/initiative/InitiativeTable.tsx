@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ProgressBar } from '../charts/ProgressBar'
 import { TimelineHealthBadge } from '../charts/TimelineHealthBadge'
@@ -19,17 +20,22 @@ export function InitiativeTable({
   rows,
   showCategory,
   emptyMessage,
+  emptyAction,
 }: {
   title: string
   rows: InitiativeSummary[]
   showCategory?: boolean
   emptyMessage?: string
+  emptyAction?: ReactNode
 }) {
   return (
     <section className="card">
       <h2>{title}</h2>
       {rows.length === 0 ? (
-        <p className="text-muted">{emptyMessage ?? 'Nothing here yet.'}</p>
+        <p className="text-muted">
+          {emptyMessage ?? 'Nothing here yet.'}
+          {emptyAction && <> {emptyAction}</>}
+        </p>
       ) : (
         <div className="table-scroll">
           <table>

@@ -80,6 +80,11 @@ being renamed everywhere in the codebase; only the UI labels changed.
   every parsed row - before anything is written. See
   [Uploading the Marketplace Ask catalog](#uploading-the-marketplace-ask-catalog)
   below.
+- **Confirmations, toasts, and search** — deleting an Outcome or opting out
+  of an Ask asks for confirmation first; creating, updating, or deleting
+  something shows a brief toast so it's clear the action landed; and the
+  three catalog pages (Change Business/Platform/Run Operations) have a
+  keyword search box and sortable columns for finding a specific Ask quickly.
 
 ## Design
 
@@ -215,7 +220,7 @@ counts fully toward July, even though it runs into August).
 ## Architecture
 
 - **Backend**: Python (FastAPI) + SQLAlchemy + Alembic. Defaults to a local
-  **SQLite** file (`backend/perftracker.db`) — no separate database server to
+  **SQLite** file (`backend/aose.db`) — no separate database server to
   install or manage. Postgres is supported too (just change `DATABASE_URL`) if
   you outgrow SQLite later. See `backend/app/`.
 - **Frontend**: React + TypeScript (Vite) + TanStack Query + React Router. See
@@ -239,9 +244,11 @@ counts fully toward July, even though it runs into August).
 - **Excel export**: `backend/app/services/excel_export.py` builds the Monthly
   Report workbook with `openpyxl` — no pandas dependency.
 - **Hosting under a path prefix**: the whole FastAPI app is mounted as a
-  sub-application under a configurable `URL_PREFIX` (default `/PerfTracker`),
+  sub-application under a configurable `URL_PREFIX` (default `/AOSE`),
   so it can sit at `host:port/AppName` alongside other internally-hosted
-  tools. See `backend/app/main.py`.
+  tools. A visit to the app's old `/PerfTracker` path (its name before the
+  AOSE rename) is redirected to wherever it's actually mounted now, so old
+  bookmarks keep working. See `backend/app/main.py`.
 
 ## Importing initiatives from Jira
 
@@ -323,8 +330,8 @@ you can — it makes future updates a one-command `git pull` instead of
 re-downloading and re-copying files by hand:
 
 ```bat
-git clone -b claude/cloud-team-perf-review-app-e8eaa0 https://github.com/elvinj-ej/app2-perftracker.git C:\Apps\PerfTracker
-cd C:\Apps\PerfTracker
+git clone -b claude/cloud-team-perf-review-app-e8eaa0 https://github.com/elvinj-ej/app2-perftracker.git C:\Apps\AOSE
+cd C:\Apps\AOSE
 ```
 
 **Windows:**
@@ -347,9 +354,9 @@ cd ../backend
 uvicorn app.main:app --host 0.0.0.0 --port 5020
 ```
 
-Either way, open `http://localhost:5020/PerfTracker` (or
-`http://<server-ip>:5020/PerfTracker` from another machine). Everything — API
-and UI — is served by that one process, under the `/PerfTracker` path prefix
+Either way, open `http://localhost:5020/AOSE` (or
+`http://<server-ip>:5020/AOSE` from another machine). Everything — API
+and UI — is served by that one process, under the `/AOSE` path prefix
 (so it can coexist with other internally-hosted apps on the same server using
 a `host:port/AppName` convention). Change the port via `start.bat` /
 `--port`, and the prefix via `URL_PREFIX` in `backend/.env` (empty string =
@@ -384,7 +391,8 @@ frontend), and it's safe to re-run any time. If the code came in via
 `setup.bat`, then it stops whatever's currently running on port 5020 and
 restarts it in a new window.
 
-**Your data is never wiped by an update.** `backend/perftracker.db` is
+**Your data is never wiped by an update.** `backend/aose.db` (or
+`backend/perftracker.db` if you haven't updated since the AOSE rename yet) is
 git-ignored, so `git pull` can't touch it, and `update.bat`/`setup.bat` only
 ever run `alembic upgrade head` - schema migrations that add tables/columns
 (and backfill sensible defaults where needed), never ones that delete your
@@ -392,10 +400,18 @@ data. The *only* thing that wipes the database is deliberately running
 `seed_sample_data.bat` (or `python scripts/seed_db.py`) yourself - it says so
 before it does anything, and asks you to confirm. As extra insurance, both
 `setup.bat` (before every migration) and `seed_sample_data.bat` (before
-wiping) now copy `perftracker.db` to `backend\backups\` with a timestamp
-first, so a bad update or an accidental reseed is always one file-copy away
-from undone. Restore by stopping the app, copying the backup back over
-`backend\perftracker.db`, and restarting.
+wiping) copy the database to `backend\backups\` with a timestamp first, so a
+bad update or an accidental reseed is always one file-copy away from undone.
+Restore by stopping the app, copying the backup back over
+`backend\aose.db`, and restarting.
+
+**One-time rename on your first update after the AOSE rebrand:** the app used
+to be called PerfTracker, and its database file was `perftracker.db`. The
+next time you run `setup.bat` or `update.bat`, it automatically renames
+`backend\perftracker.db` to `backend\aose.db` for you (after backing it up) -
+no data is lost, this is a plain file rename. Nothing to do on your end
+beyond running the update as usual. Your old `/PerfTracker` bookmark also
+keeps working - it now redirects to `/AOSE` automatically.
 
 ```bat
 update.bat
@@ -403,8 +419,9 @@ update.bat
 
 If you downloaded a ZIP instead of using `git clone`, there's no repo to pull
 from - re-download the latest ZIP, extract it, copy the files over the
-folder (keep your existing `backend\.env` and `backend\perftracker.db` -
-don't overwrite those), then run `setup.bat` and restart `start.bat` yourself.
+folder (keep your existing `backend\.env` and database file - `aose.db` or
+`perftracker.db`, whichever you have - don't overwrite those), then run
+`setup.bat` and restart `start.bat` yourself.
 
 Set `ANTHROPIC_API_KEY` in `backend/.env` if you want the AI task-breakdown
 feature; everything else works without it.
@@ -426,7 +443,7 @@ docker compose up -d --build
 
 See `docker-compose.yml` and each service's `Dockerfile` for details. This
 path uses Postgres rather than SQLite, and serves at the root (`URL_PREFIX`
-empty) rather than under `/PerfTracker`.
+empty) rather than under `/AOSE`.
 
 ## Running in dev mode
 
@@ -440,7 +457,7 @@ cp .env.example .env
 ```
 
 Edit `backend/.env` and set `URL_PREFIX=` (blank) — the Vite dev server below
-expects the API at the origin root, not under `/PerfTracker`.
+expects the API at the origin root, not under `/AOSE`.
 
 ```bash
 alembic upgrade head
@@ -466,12 +483,12 @@ an empty `URL_PREFIX`. Visit `http://localhost:5173`.
 
 | Variable | Where | Purpose |
 |---|---|---|
-| `DATABASE_URL` | backend | Defaults to `sqlite:///./perftracker.db`; set to a Postgres URL to use Postgres instead |
+| `DATABASE_URL` | backend | Defaults to `sqlite:///./aose.db`; set to a Postgres URL to use Postgres instead |
 | `ANTHROPIC_API_KEY` | backend | Required for the AI task-breakdown feature |
 | `ANTHROPIC_MODEL` | backend | Defaults to `claude-sonnet-5` |
 | `CORS_ORIGINS` | backend | Comma-separated allowed origins (only matters if the frontend is served from a different origin than the API) |
 | `STATIC_DIR` | backend | Where the built frontend lives; defaults to `static` |
-| `URL_PREFIX` | backend | Path the app is hosted under; defaults to `/PerfTracker`. Empty = serve at root (used for dev mode and the Docker path) |
+| `URL_PREFIX` | backend | Path the app is hosted under; defaults to `/AOSE`. Empty = serve at root (used for dev mode and the Docker path) |
 | `POSTGRES_PASSWORD`, `HTTP_PORT`, `SEED_ON_START` | docker-compose only | See "Running via Docker" above |
 
 ## Tests

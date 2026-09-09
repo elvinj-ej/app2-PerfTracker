@@ -11,7 +11,7 @@ interface ActorContextValue {
   setEngineer: (engineerId: number, engineerName: string) => void
 }
 
-const STORAGE_KEY = 'perftracker.actor'
+const STORAGE_KEY = 'aose.actor'
 const DEFAULT_ACTOR: Actor = { role: 'manager', managerName: MANAGER_NAMES[0] }
 
 const ActorContext = createContext<ActorContextValue | undefined>(undefined)

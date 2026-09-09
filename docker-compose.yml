@@ -2,13 +2,16 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: perftracker
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-perftracker}
-      POSTGRES_DB: perftracker
+      POSTGRES_USER: aose
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aose}
+      POSTGRES_DB: aose
     volumes:
-      - perftracker_pgdata:/var/lib/postgresql/data
+      # Named aose_pgdata (was perftracker_pgdata before the AOSE rename) - if you have
+      # an existing perftracker_pgdata volume with real data, dump/restore it into this
+      # one rather than starting fresh: `docker compose exec postgres pg_dump ...`.
+      - aose_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U perftracker"]
+      test: ["CMD-SHELL", "pg_isready -U aose"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -17,14 +20,14 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql+psycopg://perftracker:${POSTGRES_PASSWORD:-perftracker}@postgres:5432/perftracker
+      DATABASE_URL: postgresql+psycopg://aose:${POSTGRES_PASSWORD:-aose}@postgres:5432/aose
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
       SEED_ON_START: ${SEED_ON_START:-false}
       # Unprefixed here: nginx (the frontend container) serves the app at "/" and
       # proxies /api/ straight through, unlike the standalone SQLite deployment
-      # which defaults to hosting under /PerfTracker. Keep these in sync with each
+      # which defaults to hosting under /AOSE. Keep these in sync with each
       # other and with frontend/Dockerfile's VITE_BASE_PATH.
       URL_PREFIX: ""
     depends_on:
@@ -41,4 +44,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  perftracker_pgdata:
+  aose_pgdata:

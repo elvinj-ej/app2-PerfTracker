@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { getTeamSummary } from '../api/reports'
+import { Alert } from '../components/common/Alert'
 import { CategoryHoursBarChart } from '../components/charts/CategoryHoursBarChart'
 import { EngineerHoursStackedBarChart } from '../components/charts/EngineerHoursStackedBarChart'
 import { InitiativeTable } from '../components/initiative/InitiativeTable'
@@ -19,7 +20,7 @@ export function TeamSummaryPage() {
       </div>
 
       {isLoading && <p>Loading team summary…</p>}
-      {isError && <p className="text-error">Failed to load team summary.</p>}
+      {isError && <Alert variant="error">Failed to load team summary.</Alert>}
 
       {data && (
         <>

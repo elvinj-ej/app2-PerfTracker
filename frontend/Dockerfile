@@ -4,7 +4,7 @@ COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
 # nginx serves this build at "/" (see nginx.conf), unlike the standalone SQLite
-# deployment which defaults to /PerfTracker - keep in sync with docker-compose.yml's
+# deployment which defaults to /AOSE - keep in sync with docker-compose.yml's
 # backend URL_PREFIX.
 ENV VITE_BASE_PATH=/
 RUN npm run build

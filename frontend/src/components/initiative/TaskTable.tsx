@@ -1,11 +1,15 @@
+import type { ReactNode } from 'react'
 import type { TaskSummary } from '../../types/api'
 
-export function TaskTable({ tasks }: { tasks: TaskSummary[] }) {
+export function TaskTable({ tasks, emptyAction }: { tasks: TaskSummary[]; emptyAction?: ReactNode }) {
   return (
     <section className="card">
       <h2>My Outcomes</h2>
       {tasks.length === 0 ? (
-        <p className="text-muted">No outcomes assigned yet.</p>
+        <p className="text-muted">
+          No outcomes assigned yet.
+          {emptyAction && <> {emptyAction}</>}
+        </p>
       ) : (
         <div className="table-scroll">
           <table>

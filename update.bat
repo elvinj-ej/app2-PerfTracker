@@ -2,15 +2,15 @@
 setlocal
 
 echo ============================================
-echo  PerfTracker - update
+echo  AOSE - update
 echo ============================================
 
 git rev-parse --is-inside-work-tree >nul 2>&1
 if errorlevel 1 (
     echo This folder isn't a git repository, so update.bat can't pull automatically.
     echo Download the latest ZIP from GitHub instead, extract it, and copy the files
-    echo over this folder ^(keep backend\.env and backend\perftracker.db^), then run
-    echo setup.bat yourself.
+    echo over this folder ^(keep backend\.env and backend\aose.db - or backend\perftracker.db
+    echo if you haven't run setup.bat since the AOSE rename yet^), then run setup.bat yourself.
     exit /b 1
 )
 
@@ -34,8 +34,8 @@ for /f "tokens=5" %%p in ('netstat -aon ^| findstr :5020 ^| findstr LISTENING') 
     taskkill /F /PID %%p >nul 2>&1
 )
 
-start "PerfTracker" cmd /k start.bat
+start "AOSE" cmd /k start.bat
 
 echo.
-echo Update complete - PerfTracker is restarting in a new window at
-echo http://localhost:5020/PerfTracker
+echo Update complete - AOSE is restarting in a new window at
+echo http://localhost:5020/AOSE

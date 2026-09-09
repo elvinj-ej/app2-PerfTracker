@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { useState } from 'react'
 import { createTask, deleteTask, reorderTasks, updateTask, type TaskPayload } from '../../api/tasks'
+import { Alert } from '../common/Alert'
 import { useActor } from '../../context/ActorContext'
+import { useConfirm } from '../../context/ConfirmContext'
+import { useToast } from '../../context/ToastContext'
 import type { Engineer, Task } from '../../types/api'
 
 interface Props {
@@ -30,6 +33,8 @@ export function EditableTaskList({
 }: Props) {
   const { actor } = useActor()
   const queryClient = useQueryClient()
+  const confirm = useConfirm()
+  const toast = useToast()
   const [bulkMode, setBulkMode] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [bulkTitles, setBulkTitles] = useState('')
@@ -47,8 +52,20 @@ export function EditableTaskList({
   })
   const deleteMutation = useMutation({
     mutationFn: (taskId: number) => deleteTask(actor, taskId),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate()
+      toast.success('Outcome deleted')
+    },
   })
+
+  async function handleDelete(task: Task) {
+    const confirmed = await confirm(`Delete "${task.title}"? This can't be undone.`, {
+      title: 'Delete this Outcome?',
+      confirmLabel: 'Delete',
+      danger: true,
+    })
+    if (confirmed) deleteMutation.mutate(task.id)
+  }
 
   function buildPayload(title: string): TaskPayload {
     return {
@@ -64,6 +81,7 @@ export function EditableTaskList({
     mutationFn: (payload: TaskPayload) => createTask(actor, initiativeId, payload),
     onSuccess: () => {
       invalidate()
+      toast.success('Outcome added')
       setNewTitle('')
       setNewOwnerId('')
       setNewForecast('')
@@ -73,7 +91,10 @@ export function EditableTaskList({
   })
   const bulkCreateMutation = useMutation({
     mutationFn: (titles: string[]) => Promise.all(titles.map((title) => createTask(actor, initiativeId, buildPayload(title)))),
-    onSuccess: () => setBulkTitles(''),
+    onSuccess: (created) => {
+      setBulkTitles('')
+      toast.success(`${created.length} Outcome${created.length === 1 ? '' : 's'} added`)
+    },
     // Even a partially-failed batch may have created some Outcomes already (Promise.all
     // rejects on the first error, but earlier requests already landed) - always refresh
     // so the list reflects whatever actually got created.
@@ -85,7 +106,11 @@ export function EditableTaskList({
   })
   const generateMutation = useMutation({
     mutationFn: () => onGenerateBreakdown!(),
-    onSuccess: invalidate,
+    onSuccess: (created) => {
+      invalidate()
+      const count = Array.isArray(created) ? created.length : undefined
+      toast.success(count !== undefined ? `${count} Outcome${count === 1 ? '' : 's'} generated` : 'Breakdown generated')
+    },
   })
 
   const sorted = [...tasks].sort((a, b) => a.sequence_order - b.sequence_order)
@@ -120,16 +145,19 @@ export function EditableTaskList({
         Outcomes start Unassigned — an engineer claims the ones they want via the Owner column.
       </p>
       {generateMutation.isError && (
-        <p className="text-error">{(generateMutation.error as Error).message}</p>
+        <Alert variant="error">{(generateMutation.error as Error).message}</Alert>
       )}
       {(updateMutation.isError || createMutation.isError || bulkCreateMutation.isError) && (
-        <p className="text-error">
+        <Alert variant="error">
           {((updateMutation.error ?? createMutation.error ?? bulkCreateMutation.error) as Error).message}
-        </p>
+        </Alert>
       )}
 
       {sorted.length === 0 ? (
-        <p className="text-muted">No outcomes yet.</p>
+        <p className="text-muted">
+          No outcomes yet — add one with the form below
+          {onGenerateBreakdown ? ', or generate a suggested breakdown above.' : '.'}
+        </p>
       ) : (
         <div className="table-scroll">
           <table>
@@ -226,7 +254,7 @@ export function EditableTaskList({
                     </select>
                   </td>
                   <td>
-                    <button className="btn-icon" onClick={() => deleteMutation.mutate(task.id)}>
+                    <button className="btn-icon" aria-label={`Delete ${task.title}`} onClick={() => handleDelete(task)}>
                       ✕
                     </button>
                   </td>

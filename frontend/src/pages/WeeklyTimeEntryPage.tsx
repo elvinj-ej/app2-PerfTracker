@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { listEngineers } from '../api/engineers'
 import { getEngineerDashboard } from '../api/reports'
 import { listTimeEntries, upsertTimeEntry } from '../api/timeEntries'
+import { Alert } from '../components/common/Alert'
 import { useActor } from '../context/ActorContext'
+import { useToast } from '../context/ToastContext'
 
 function mondayOf(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00`)
@@ -19,6 +22,7 @@ function todayIso(): string {
 export function WeeklyTimeEntryPage() {
   const { actor } = useActor()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const { data: engineers } = useQuery({ queryKey: ['engineers'], queryFn: () => listEngineers(actor) })
 
   const [selectedEngineerId, setSelectedEngineerId] = useState<number | undefined>(
@@ -65,6 +69,7 @@ export function WeeklyTimeEntryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-entries', selectedEngineerId] })
       queryClient.invalidateQueries({ queryKey: ['engineer-dashboard', selectedEngineerId] })
+      toast.success('Hours saved')
     },
   })
 
@@ -96,8 +101,11 @@ export function WeeklyTimeEntryPage() {
 
       <section className="card">
         <h2>My Outcomes</h2>
+        {saveMutation.isError && <Alert variant="error">{(saveMutation.error as Error).message}</Alert>}
         {tasks.length === 0 ? (
-          <p className="text-muted">No outcomes assigned.</p>
+          <p className="text-muted">
+            No outcomes assigned yet — visit the <Link to="/marketplace">Marketplace</Link> to opt into an Ask.
+          </p>
         ) : (
           <div className="table-scroll">
             <table>

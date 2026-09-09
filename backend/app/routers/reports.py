@@ -56,7 +56,7 @@ def export_monthly_report(month: str, db: Session = Depends(get_db)):
     _validate_month(month)
     report = build_monthly_report(db, month)
     workbook_bytes = build_monthly_report_workbook(report)
-    filename = f"perftracker-monthly-report-{month}.xlsx"
+    filename = f"aose-monthly-report-{month}.xlsx"
     return StreamingResponse(
         io.BytesIO(workbook_bytes),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

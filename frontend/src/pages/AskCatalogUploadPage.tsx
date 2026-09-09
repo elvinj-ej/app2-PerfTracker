@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { commitAskCatalogImport, downloadAskCatalogTemplate, previewAskCatalogImport } from '../api/askCatalogImport'
+import { Alert } from '../components/common/Alert'
 import { useActor } from '../context/ActorContext'
 import type { AskCatalogCommitResult, AskCatalogImportMode, AskCatalogPreviewResponse } from '../types/api'
 
@@ -88,7 +89,7 @@ export function AskCatalogUploadPage() {
             Download a blank template
           </button>
         </div>
-        {previewMutation.isError && <p className="text-error">{(previewMutation.error as Error).message}</p>}
+        {previewMutation.isError && <Alert variant="error">{(previewMutation.error as Error).message}</Alert>}
       </section>
 
       {result && (
@@ -195,10 +196,10 @@ export function AskCatalogUploadPage() {
 
           {mode === 'overwrite' && (
             <div className="card-inset">
-              <p className="text-error">
+              <Alert variant="error">
                 This deletes every existing Ask, Outcome, and opt-in (across Run Operations, Change Platform, and
                 Change Business) before loading this file. Engineers are not affected. This can't be undone.
-              </p>
+              </Alert>
               <label>
                 <input
                   type="checkbox"
@@ -210,7 +211,7 @@ export function AskCatalogUploadPage() {
             </div>
           )}
 
-          {commitMutation.isError && <p className="text-error">{(commitMutation.error as Error).message}</p>}
+          {commitMutation.isError && <Alert variant="error">{(commitMutation.error as Error).message}</Alert>}
 
           <button
             className="btn btn-primary"

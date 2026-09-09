@@ -7,6 +7,8 @@ import { listPlatformInitiatives, optInPlatformInitiative, optOutPlatformInitiat
 import { listRecurringOps, optInRecurringOps, optOutRecurringOps } from '../api/recurringOps'
 import { CATEGORY_META } from '../components/charts/categoryMeta'
 import { useActor } from '../context/ActorContext'
+import { useConfirm } from '../context/ConfirmContext'
+import { useToast } from '../context/ToastContext'
 import type { InitiativeType } from '../types/api'
 
 const RECURRENCE_LABELS: Record<string, string> = {
@@ -45,6 +47,8 @@ interface MarketplaceRow {
 export function MarketplacePage() {
   const { actor } = useActor()
   const queryClient = useQueryClient()
+  const confirm = useConfirm()
+  const toast = useToast()
   const [typeFilter, setTypeFilter] = useState<InitiativeType | 'ALL'>('ALL')
   const [openOnly, setOpenOnly] = useState(true)
   const [keyword, setKeyword] = useState('')
@@ -126,14 +130,25 @@ export function MarketplacePage() {
     mutationFn: (row: MarketplaceRow) => row.optIn(),
     onSuccess: (_, row) => {
       queryClient.invalidateQueries({ queryKey: [row.invalidateKey] })
+      toast.success(`You're opted in to "${row.title}"`)
     },
   })
   const optOutMutation = useMutation({
     mutationFn: (row: MarketplaceRow) => row.optOut(),
     onSuccess: (_, row) => {
       queryClient.invalidateQueries({ queryKey: [row.invalidateKey] })
+      toast.success(`You've opted out of "${row.title}"`)
     },
   })
+
+  async function handleOptOut(row: MarketplaceRow) {
+    const confirmed = await confirm(`Opt out of "${row.title}"? Any Outcomes you own will stay assigned to you.`, {
+      title: 'Opt out?',
+      confirmLabel: 'Opt Out',
+      danger: true,
+    })
+    if (confirmed) optOutMutation.mutate(row)
+  }
 
   const isLoading = kbisQuery.isLoading || platformQuery.isLoading || runOpsQuery.isLoading
 
@@ -221,7 +236,7 @@ export function MarketplacePage() {
                           <button
                             className={isOptedIn ? 'btn btn-secondary' : 'btn btn-primary'}
                             disabled={optInMutation.isPending || optOutMutation.isPending}
-                            onClick={() => (isOptedIn ? optOutMutation.mutate(row) : optInMutation.mutate(row))}
+                            onClick={() => (isOptedIn ? handleOptOut(row) : optInMutation.mutate(row))}
                           >
                             {isOptedIn ? 'Opt Out' : "I'll take this"}
                           </button>

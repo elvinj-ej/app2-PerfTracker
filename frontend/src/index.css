@@ -795,3 +795,171 @@ select:focus-visible, input:focus-visible, textarea:focus-visible, .btn:focus-vi
   color: var(--text-muted);
 }
 
+/* --- Alerts --- */
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+.alert-icon {
+  flex: 0 0 auto;
+  line-height: 1.4;
+}
+
+.alert-error {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.alert-success {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.alert-info {
+  background: var(--gray-bg);
+  color: var(--text);
+}
+
+/* --- Toasts --- */
+
+.toast-viewport {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  max-width: 360px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(20, 16, 40, 0.16);
+  animation: toast-in 0.16s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-success {
+  background: var(--text-h);
+  color: var(--bg);
+}
+
+.toast-error {
+  background: var(--red);
+  color: #fff;
+}
+
+.toast-dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 12px;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.toast-dismiss:hover {
+  opacity: 1;
+}
+
+/* --- Confirm dialog --- */
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 20, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.confirm-dialog {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 22px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(10, 8, 20, 0.25);
+}
+
+.confirm-dialog h2 {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.confirm-dialog p {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-danger {
+  background: var(--red);
+  color: #fff;
+}
+
+.btn-danger:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+/* --- Catalog search/sort --- */
+
+.catalog-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.catalog-search-input {
+  min-width: 240px;
+}
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable-th:hover {
+  color: var(--text-h);
+}
+
+.sortable-th-arrow {
+  color: var(--accent);
+}
+

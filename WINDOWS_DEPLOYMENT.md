@@ -1,8 +1,8 @@
 # Windows Server Deployment Notes
 
-Reference notes for running PerfTracker standalone on a Windows server (no
-Docker), based on getting it running at `C:\Apps\PerfTracker`, port `5020`,
-under the `/PerfTracker` path. See `README.md` for the general setup;
+Reference notes for running AOSE standalone on a Windows server (no
+Docker), based on getting it running at `C:\Apps\AOSE`, port `5020`,
+under the `/AOSE` path. See `README.md` for the general setup;
 this file covers the Windows-specific gotchas actually hit along the way.
 
 ## Prerequisites
@@ -24,12 +24,12 @@ choco install nodejs-lts -y
 
 ## Day-to-day commands
 
-Run these from `C:\Apps\PerfTracker`:
+Run these from `C:\Apps\AOSE`:
 
 | Command | What it does |
 |---|---|
-| `.\setup.bat` | One-time (or after any update): creates the Python venv, installs dependencies, backs up `perftracker.db` to `backend\backups\` then runs DB migrations, builds the frontend into `backend\static` |
-| `.\start.bat` | Starts the app at `http://localhost:5020/PerfTracker` |
+| `.\setup.bat` | One-time (or after any update): creates the Python venv, installs dependencies, renames `perftracker.db` to `aose.db` the first time it runs after the AOSE rebrand, backs up `aose.db` to `backend\backups\` then runs DB migrations, builds the frontend into `backend\static` |
+| `.\start.bat` | Starts the app at `http://localhost:5020/AOSE` |
 | `.\seed_sample_data.bat` | **Wipes** the database (after backing it up) and loads the FY26-27 Ask catalog fresh |
 | `.\update.bat` | `git pull` + re-run setup + restart the running instance (requires Git) - never wipes data; see [Updating after a code change](README.md#updating-after-a-code-change) |
 
@@ -59,7 +59,7 @@ npm install
 npm run build
 ```
 Copy the **contents** of the resulting `dist` folder into
-`C:\Apps\PerfTracker\backend\static` on the server (see issue #2 below for
+`C:\Apps\AOSE\backend\static` on the server (see issue #2 below for
 the exact folder layout it needs to end up in).
 
 ### 2. Page loads but is completely blank
@@ -90,7 +90,7 @@ backend\static\
 If the `assets` subfolder is missing, create it and move the `.js`/`.css`
 files into it:
 ```powershell
-cd C:\Apps\PerfTracker\backend\static
+cd C:\Apps\AOSE\backend\static
 New-Item -ItemType Directory -Path assets -Force
 Move-Item -Path index-*.js, index-*.css -Destination assets
 ```
@@ -122,11 +122,11 @@ branch before downloading, not `main`).
 
 ```powershell
 # API responds
-Invoke-RestMethod http://localhost:5020/PerfTracker/api/health
+Invoke-RestMethod http://localhost:5020/AOSE/api/health
 
 # Frontend files are laid out correctly
-Get-ChildItem -Recurse C:\Apps\PerfTracker\backend\static
+Get-ChildItem -Recurse C:\Apps\AOSE\backend\static
 ```
 The second command's output should match the folder layout shown in issue #2
-above. Then open `http://localhost:5020/PerfTracker` in a browser — you
+above. Then open `http://localhost:5020/AOSE` in a browser — you
 should see the dashboard, not a blank page.

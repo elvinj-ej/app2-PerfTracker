@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { previewJiraXmlImport, previewWordDocImport } from '../api/initiativeImport'
 import { createKbi, listKbiCategories } from '../api/kbis'
 import { createPlatformInitiative, listPlatformCategories } from '../api/platformInitiatives'
+import { Alert } from '../components/common/Alert'
 import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
 import type { JiraImportPreview } from '../types/api'
@@ -199,7 +200,7 @@ export function ImportInitiativePage() {
           </button>
         </div>
 
-        {previewError && <p className="text-error">{previewError}</p>}
+        {previewError && <Alert variant="error">{previewError}</Alert>}
       </section>
 
       {createdLink && (
@@ -348,7 +349,7 @@ export function ImportInitiativePage() {
           </FormField>
 
           {createMutation.isError && (
-            <p className="text-error">{(createMutation.error as Error).message}</p>
+            <Alert variant="error">{(createMutation.error as Error).message}</Alert>
           )}
 
           <button

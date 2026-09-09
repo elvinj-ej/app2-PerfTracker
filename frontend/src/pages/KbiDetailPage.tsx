@@ -4,10 +4,12 @@ import { useParams } from 'react-router-dom'
 import { listEngineers } from '../api/engineers'
 import { generateKbiBreakdown, getKbi, listKbiCategories, optInKbi, optOutKbi, updateKbi } from '../api/kbis'
 import { listTasks } from '../api/tasks'
+import { Alert } from '../components/common/Alert'
 import { FormField } from '../components/common/FormField'
 import { EditableTaskList } from '../components/initiative/EditableTaskList'
 import { OptInButton } from '../components/initiative/OptInButton'
 import { useActor } from '../context/ActorContext'
+import { useToast } from '../context/ToastContext'
 import type { Kbi } from '../types/api'
 
 interface EditForm {
@@ -43,6 +45,7 @@ export function KbiDetailPage() {
   const initiativeId = Number(id)
   const { actor } = useActor()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState<EditForm | null>(null)
 
@@ -73,6 +76,7 @@ export function KbiDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['kbis', initiativeId] })
       queryClient.invalidateQueries({ queryKey: ['kbis'] })
       setIsEditing(false)
+      toast.success('Ask updated')
     },
   })
 
@@ -175,7 +179,7 @@ export function KbiDetailPage() {
                 </select>
               </FormField>
             </div>
-            {updateMutation.isError && <p className="text-error">{(updateMutation.error as Error).message}</p>}
+            {updateMutation.isError && <Alert variant="error">{(updateMutation.error as Error).message}</Alert>}
             <div className="add-task-form">
               <button
                 className="btn btn-primary"

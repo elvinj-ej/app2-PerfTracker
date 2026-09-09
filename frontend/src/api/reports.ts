@@ -22,6 +22,6 @@ export function downloadMonthlyReportExport(actor: Actor, month: string): Promis
   return downloadFile(
     `/api/reports/monthly/export?month=${encodeURIComponent(month)}`,
     actor,
-    `perftracker-monthly-report-${month}.xlsx`,
+    `aose-monthly-report-${month}.xlsx`,
   )
 }

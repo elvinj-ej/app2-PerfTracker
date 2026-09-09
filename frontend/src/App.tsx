@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Sidebar } from './components/layout/Sidebar'
 import { Topbar } from './components/layout/Topbar'
 import { ActorProvider } from './context/ActorContext'
+import { ConfirmProvider } from './context/ConfirmContext'
+import { ToastProvider } from './context/ToastContext'
 import { AskCatalogUploadPage } from './pages/AskCatalogUploadPage'
 import { EngineerDashboardPage } from './pages/EngineerDashboardPage'
 import { ImportInitiativePage } from './pages/ImportInitiativePage'
@@ -23,32 +25,36 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ActorProvider>
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <div className="app-shell">
-            <Sidebar />
-            <div className="app-content-col">
-              <Topbar />
-              <main className="app-main">
-                <Routes>
-                  <Route path="/" element={<EngineerDashboardPage />} />
-                  <Route path="/marketplace" element={<MarketplacePage />} />
-                  <Route path="/team" element={<TeamSummaryPage />} />
-                  <Route path="/reports/monthly" element={<MonthlyReportPage />} />
-                  <Route path="/kbis" element={<KbiCatalogPage />} />
-                  <Route path="/kbis/:id" element={<KbiDetailPage />} />
-                  <Route path="/platform-initiatives" element={<PlatformInitiativeCatalogPage />} />
-                  <Route path="/platform-initiatives/:id" element={<PlatformInitiativeDetailPage />} />
-                  <Route path="/recurring-ops" element={<RecurringOpsCatalogPage />} />
-                  <Route path="/recurring-ops/:id" element={<RecurringOpsDetailPage />} />
-                  <Route path="/log-time" element={<WeeklyTimeEntryPage />} />
-                  <Route path="/import" element={<ImportInitiativePage />} />
-                  <Route path="/import/ask-catalog" element={<AskCatalogUploadPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </main>
-            </div>
-          </div>
-        </BrowserRouter>
+        <ToastProvider>
+          <ConfirmProvider>
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
+              <div className="app-shell">
+                <Sidebar />
+                <div className="app-content-col">
+                  <Topbar />
+                  <main className="app-main">
+                    <Routes>
+                      <Route path="/" element={<EngineerDashboardPage />} />
+                      <Route path="/marketplace" element={<MarketplacePage />} />
+                      <Route path="/team" element={<TeamSummaryPage />} />
+                      <Route path="/reports/monthly" element={<MonthlyReportPage />} />
+                      <Route path="/kbis" element={<KbiCatalogPage />} />
+                      <Route path="/kbis/:id" element={<KbiDetailPage />} />
+                      <Route path="/platform-initiatives" element={<PlatformInitiativeCatalogPage />} />
+                      <Route path="/platform-initiatives/:id" element={<PlatformInitiativeDetailPage />} />
+                      <Route path="/recurring-ops" element={<RecurringOpsCatalogPage />} />
+                      <Route path="/recurring-ops/:id" element={<RecurringOpsDetailPage />} />
+                      <Route path="/log-time" element={<WeeklyTimeEntryPage />} />
+                      <Route path="/import" element={<ImportInitiativePage />} />
+                      <Route path="/import/ask-catalog" element={<AskCatalogUploadPage />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </main>
+                </div>
+              </div>
+            </BrowserRouter>
+          </ConfirmProvider>
+        </ToastProvider>
       </ActorProvider>
     </QueryClientProvider>
   )
