@@ -112,30 +112,38 @@ class TaskBreakdownService:
         if self._client is None:
             raise AiBreakdownError("ANTHROPIC_API_KEY is not configured")
 
-        response = self._client.messages.create(
-            model=settings.anthropic_model,
-            max_tokens=2048,
-            system=SYSTEM_PROMPT,
-            tools=[TASK_BREAKDOWN_TOOL],
-            tool_choice={"type": "tool", "name": "record_task_breakdown"},
-            messages=[{"role": "user", "content": _build_user_prompt(initiative, category_name)}],
-        )
+        try:
+            response = self._client.messages.create(
+                model=settings.anthropic_model,
+                max_tokens=2048,
+                system=SYSTEM_PROMPT,
+                tools=[TASK_BREAKDOWN_TOOL],
+                tool_choice={"type": "tool", "name": "record_task_breakdown"},
+                messages=[{"role": "user", "content": _build_user_prompt(initiative, category_name)}],
+            )
+        except anthropic.APIError as exc:
+            # Covers auth failures, an invalid/unavailable ANTHROPIC_MODEL, rate limits,
+            # and connection errors - surfaced as a clear 502 instead of a bare 500.
+            raise AiBreakdownError(f"Claude API error: {exc}") from exc
 
         tool_use_block = next((b for b in response.content if b.type == "tool_use"), None)
         if tool_use_block is None:
             raise AiBreakdownError("Claude did not return a tool_use block with the task breakdown")
 
         raw_tasks = tool_use_block.input.get("tasks", [])
-        tasks = [
-            SuggestedTask(
-                title=t["title"],
-                description=t["description"],
-                stage=TaskStage(t["stage"]),
-                forecast_duration_days=float(t["forecast_duration_days"]),
-                sequence_order=i,
-            )
-            for i, t in enumerate(raw_tasks)
-        ]
+        try:
+            tasks = [
+                SuggestedTask(
+                    title=t["title"],
+                    description=t["description"],
+                    stage=TaskStage(t["stage"]),
+                    forecast_duration_days=float(t["forecast_duration_days"]),
+                    sequence_order=i,
+                )
+                for i, t in enumerate(raw_tasks)
+            ]
+        except (KeyError, ValueError, TypeError) as exc:
+            raise AiBreakdownError(f"Claude returned a task breakdown in an unexpected shape: {exc}") from exc
         return tasks, response
 
     @staticmethod

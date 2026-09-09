@@ -1,9 +1,13 @@
 from datetime import date
 from unittest.mock import MagicMock
 
+import anthropic
+import httpx
+import pytest
+
 from app.models import Initiative
 from app.models.enums import InitiativeStatus, InitiativeType
-from app.services.ai_breakdown import TaskBreakdownService, generate_and_persist_breakdown
+from app.services.ai_breakdown import AiBreakdownError, TaskBreakdownService, generate_and_persist_breakdown
 from app.services.outcome_dates import validate_delivery_span
 
 
@@ -40,6 +44,31 @@ def test_generate_parses_tool_use_response_into_suggested_tasks():
         "type": "tool",
         "name": "record_task_breakdown",
     }
+
+
+def test_generate_wraps_anthropic_api_errors_as_ai_breakdown_error():
+    client = MagicMock()
+    client.messages.create.side_effect = anthropic.APIConnectionError(
+        message="Connection error.", request=httpx.Request("POST", "https://api.anthropic.com")
+    )
+    service = TaskBreakdownService(client=client)
+    initiative = Initiative(title="Test KBI", type=InitiativeType.KBI, status=InitiativeStatus.DRAFT)
+
+    with pytest.raises(AiBreakdownError, match="Claude API error"):
+        service.generate(initiative)
+
+
+def test_generate_wraps_malformed_tool_response_as_ai_breakdown_error():
+    client = MagicMock()
+    # Missing the required "stage" key - simulates an unexpected/malformed tool response.
+    client.messages.create.return_value = _fake_anthropic_response(
+        [{"title": "Oops", "description": "Missing stage", "forecast_duration_days": 3}]
+    )
+    service = TaskBreakdownService(client=client)
+    initiative = Initiative(title="Test KBI", type=InitiativeType.KBI, status=InitiativeStatus.DRAFT)
+
+    with pytest.raises(AiBreakdownError, match="unexpected shape"):
+        service.generate(initiative)
 
 
 def test_generate_and_persist_breakdown_creates_editable_task_rows(db_session):
