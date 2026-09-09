@@ -1,10 +1,12 @@
-# Cloud Team Performance Tracker
+# AOSE
 
-Tracks the Cloud Team's performance over a July–June fiscal year across three
-categories of work — **Change Business**, **Change Platform**, and **Run
-Operations** — with a Marketplace for engineers to pick up open work,
-per-engineer and team-wide views, an AI-assisted Outcome breakdown, a monthly
-reporting/export workflow, and a Jira import path for standing up new Asks.
+**A**sk · **O**utcome · **S**cheduling · **E**ngineering — a tool for the
+Hosting, Platform & Database Team to manage demand and capacity over a
+July–June fiscal year across three categories of work — **Change Business**,
+**Change Platform**, and **Run Operations** — with a Marketplace for
+engineers to pick up open work, per-engineer and team-wide views, an
+AI-assisted Outcome breakdown, a monthly reporting/export workflow, and a
+Jira import path for standing up new Asks.
 
 Everything the team needs to deliver is modeled as an **Ask** — the internal
 type names (`KBI`, `PLATFORM`, `RECURRING_OPS`) predate the Change
@@ -358,7 +360,7 @@ To load the starting data the first time, run `seed_sample_data.bat`
 wipes and reloads all data**, so only do it once, on a fresh install. It's
 not demo/placeholder data: it loads the real FY26-27 Ask catalog
 (`backend/app/data/fy2627_asks.py`) as unclaimed Marketplace Asks, alongside
-the Cloud Team's 14 named engineers (David Raddoux, Junling Yu, Luke
+the Hosting, Platform & Database Team's 14 named engineers (David Raddoux, Junling Yu, Luke
 Winters, ... — see `backend/app/services/seed.py` for the full roster). See
 [Managing repeated Asks](#managing-repeated-asks) and that same file for the
 category/date/priority assumptions it makes while loading.

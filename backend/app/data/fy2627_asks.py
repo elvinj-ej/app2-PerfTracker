@@ -1,4 +1,4 @@
-"""The Hosting & Platform team's FY26-27 Ask catalog, as supplied by the manager
+"""The Hosting, Platform & Database team's FY26-27 Ask catalog, as supplied by the manager
 (spreadsheet columns: Category - Initiative | Ask | By Date). This is the one-time real
 data load used by `services/seed.py` - not sample/demo data.
 

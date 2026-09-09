@@ -272,7 +272,7 @@ export function ImportInitiativePage() {
               />
             </FormField>
             {targetType === 'KBI' && (
-              <FormField label="Additional Ask Detail" hint="Optional - more on what the Cloud Team needs to provide">
+              <FormField label="Additional Ask Detail" hint="Optional - more on what the Hosting, Platform & Database Team needs to provide">
                 <input
                   placeholder="Additional detail"
                   value={form.ask}

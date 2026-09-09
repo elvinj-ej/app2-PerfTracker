@@ -129,7 +129,7 @@ export function KbiDetailPage() {
               <FormField label="Business Goal" hint="The outcome this needs to achieve">
                 <input value={form.business_goal} onChange={(e) => setForm({ ...form, business_goal: e.target.value })} />
               </FormField>
-              <FormField label="Additional Ask Detail" hint="Optional - more on what the Cloud Team needs to provide">
+              <FormField label="Additional Ask Detail" hint="Optional - more on what the Hosting, Platform & Database Team needs to provide">
                 <input value={form.ask} onChange={(e) => setForm({ ...form, ask: e.target.value })} />
               </FormField>
               <FormField label="Jira Number" hint="Optional, e.g. ME-1">

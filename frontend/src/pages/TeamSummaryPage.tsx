@@ -15,7 +15,7 @@ export function TeamSummaryPage() {
   return (
     <div className="page">
       <div className="page-toolbar">
-        <h1 className="page-title">Hosting &amp; Platform Team Summary</h1>
+        <h1 className="page-title">Hosting, Platform &amp; Database Team Summary</h1>
       </div>
 
       {isLoading && <p>Loading team summary…</p>}

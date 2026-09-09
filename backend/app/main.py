@@ -33,7 +33,7 @@ from app.routers import (
     upgrade_units,
 )
 
-api_app = FastAPI(title="Cloud Team Performance Tracker API")
+api_app = FastAPI(title="AOSE API")
 
 api_app.add_middleware(
     CORSMiddleware,
@@ -89,7 +89,7 @@ if _static_dir.is_dir():
 # Leave URL_PREFIX empty to serve at the root instead.
 _prefix = settings.url_prefix.rstrip("/")
 if _prefix:
-    app = FastAPI(title="Cloud Team Performance Tracker")
+    app = FastAPI(title="AOSE")
     app.mount(_prefix, api_app)
 
     @app.get("/")

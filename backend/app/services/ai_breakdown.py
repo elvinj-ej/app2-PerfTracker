@@ -17,9 +17,9 @@ from app.models import AiBreakdownRequest, Initiative, Task
 from app.models.enums import TaskStage
 from app.services.outcome_dates import sequential_wednesday_windows
 
-SYSTEM_PROMPT = """You are assisting a Cloud/Hosting & Platform engineering team in breaking \
+SYSTEM_PROMPT = """You are assisting a Hosting, Platform & Database engineering team in breaking \
 down a work initiative into a list of Outcomes - the concrete, ownable pieces of work that \
-answer the initiative's "Ask" (what the Cloud Team needs to provide). This team follows a \
+answer the initiative's "Ask" (what the team needs to provide). This team follows a \
 TOGAF-influenced systems design lifecycle for KBI and Platform work, with these standard \
 stages, in order:
 
@@ -85,7 +85,7 @@ def _build_user_prompt(initiative, category_name: str | None) -> str:
         f"Title: {initiative.title}",
         f"Description: {initiative.description or 'N/A'}",
         f"Business goal: {initiative.business_goal or 'N/A'}",
-        f"Ask (what the Cloud Team needs to provide): {initiative.ask or 'N/A'}",
+        f"Ask (what the team needs to provide): {initiative.ask or 'N/A'}",
         f"Jira number: {initiative.jira_number or 'N/A'}",
         f"Start date: {initiative.start_date or 'N/A'}",
         f"Expected delivery date: {initiative.expected_delivery_date or 'N/A'}",

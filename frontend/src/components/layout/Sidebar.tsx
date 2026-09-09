@@ -10,8 +10,11 @@ export function Sidebar() {
   return (
     <aside className="app-sidebar">
       <div className="app-brand">
-        <span className="app-brand-mark">CT</span>
-        <span className="app-brand-name">Cloud Team Performance Tracker</span>
+        <span className="app-brand-mark">A</span>
+        <div className="app-brand-text">
+          <span className="app-brand-name">AOSE</span>
+          <span className="app-brand-sub">Hosting, Platform &amp; DB Team</span>
+        </div>
       </div>
       <nav className="sidebar-nav">
         {groups.map((group) => (

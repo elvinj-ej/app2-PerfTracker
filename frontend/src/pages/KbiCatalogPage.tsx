@@ -70,7 +70,7 @@ function NewKbiForm() {
         <FormField label="Business Goal" hint="The outcome this needs to achieve">
           <input placeholder="e.g. Reduce hosting costs" value={businessGoal} onChange={(e) => setBusinessGoal(e.target.value)} />
         </FormField>
-        <FormField label="Additional Ask Detail" hint="Optional - more on what the Cloud Team needs to provide">
+        <FormField label="Additional Ask Detail" hint="Optional - more on what the Hosting, Platform & Database Team needs to provide">
           <input placeholder="e.g. Migrate the portal backend with zero downtime" value={ask} onChange={(e) => setAsk(e.target.value)} />
         </FormField>
         <FormField label="Jira Number" hint="Optional, e.g. ME-1">

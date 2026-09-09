@@ -1,4 +1,4 @@
-"""Loads the Hosting & Platform team's real FY26-27 Ask catalog (see
+"""Loads the Hosting, Platform & Database team's real FY26-27 Ask catalog (see
 `app/data/fy2627_asks.py`) as the tool's starting data: the named engineers, the
 category lookups derived from the catalog, and every Ask as an unclaimed, marketplace-
 ready initiative. Deliberately carries no seeded outcomes or opt-ins - engineers pick
