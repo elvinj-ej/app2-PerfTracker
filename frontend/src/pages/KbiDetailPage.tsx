@@ -23,6 +23,7 @@ interface EditForm {
   priority: string
   complexity: string
   status: string
+  funded: boolean
 }
 
 function formFromKbi(kbi: Kbi): EditForm {
@@ -37,6 +38,7 @@ function formFromKbi(kbi: Kbi): EditForm {
     priority: kbi.priority ?? 'MEDIUM',
     complexity: kbi.complexity ?? 'MEDIUM',
     status: kbi.status,
+    funded: kbi.funded,
   }
 }
 
@@ -71,6 +73,7 @@ export function KbiDetailPage() {
         priority: payload.priority || null,
         complexity: payload.complexity || null,
         status: payload.status,
+        funded: payload.funded,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kbis', initiativeId] })
@@ -178,6 +181,16 @@ export function KbiDetailPage() {
                   <option value="ARCHIVED">Archived</option>
                 </select>
               </FormField>
+              <FormField label="Funded" hint="Whether budget has been approved for this Ask">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={form.funded}
+                    onChange={(e) => setForm({ ...form, funded: e.target.checked })}
+                  />{' '}
+                  Funded
+                </label>
+              </FormField>
             </div>
             {updateMutation.isError && <Alert variant="error">{(updateMutation.error as Error).message}</Alert>}
             <div className="add-task-form">
@@ -213,6 +226,12 @@ export function KbiDetailPage() {
             <dd>{kbi.complexity ?? '—'}</dd>
             <dt>Status</dt>
             <dd>{kbi.status}</dd>
+            <dt>Funded</dt>
+            <dd>
+              <span className={`badge badge-inline ${kbi.funded ? 'badge-green' : 'badge-gray'}`}>
+                {kbi.funded ? 'Funded' : 'Unfunded'}
+              </span>
+            </dd>
           </dl>
         )}
       </section>

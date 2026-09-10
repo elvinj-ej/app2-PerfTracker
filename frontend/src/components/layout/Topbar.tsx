@@ -36,7 +36,8 @@ export function Topbar() {
   }
 
   const currentValue = actor.role === 'manager' ? `manager:${actor.managerName}` : String(actor.engineerId)
-  const sectionLabel = findNavLabel(location.pathname) ?? 'My Dashboard'
+  const rawSectionLabel = findNavLabel(location.pathname) ?? 'My Dashboard'
+  const sectionLabel = rawSectionLabel === 'My Dashboard' && actor.role === 'manager' ? 'Team Dashboard' : rawSectionLabel
   const actorDisplayName = actor.role === 'manager' ? actor.managerName : actor.engineerName
 
   return (

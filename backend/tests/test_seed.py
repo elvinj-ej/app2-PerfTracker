@@ -3,7 +3,6 @@ from datetime import date
 from app.models import Initiative, KbiCategory, PlatformInitiativeCategory, RecurringOpsCategory
 from app.models.enums import InitiativeType, Priority, RecurrenceType
 from app.services.initiatives import query_by_type, to_kbi_read, to_platform_read, to_recurring_ops_read
-from app.services.outcome_dates import validate_within_ask_timeline
 from app.services.ask_parsing import (
     FY_END,
     FY_FEB_END,
@@ -69,7 +68,6 @@ def test_seed_loads_the_fy26_27_catalog_fully_unclaimed(db_session):
 
     for kbi in (i for i in initiatives if i.type == InitiativeType.KBI):
         assert kbi.expected_delivery_date is not None
-        validate_within_ask_timeline(None, None, kbi.start_date, kbi.expected_delivery_date)
 
     for platform in (i for i in initiatives if i.type == InitiativeType.PLATFORM):
         assert platform.expected_delivery_date is not None

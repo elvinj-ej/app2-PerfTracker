@@ -44,11 +44,13 @@ class InitiativeUpdateBase(BaseModel):
 class KbiCreate(InitiativeBase):
     ask: str | None = None
     category_id: int
+    funded: bool = False
 
 
 class KbiUpdate(InitiativeUpdateBase):
     ask: str | None = None
     category_id: int | None = None
+    funded: bool | None = None
 
 
 class KbiRead(InitiativeBase):
@@ -58,6 +60,7 @@ class KbiRead(InitiativeBase):
     type: InitiativeType
     ask: str | None = None
     category: KbiCategoryRead
+    funded: bool = False
     engineer_ids: list[int] = []
 
 

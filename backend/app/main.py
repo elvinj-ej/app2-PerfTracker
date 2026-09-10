@@ -28,6 +28,7 @@ from app.routers import (
     recurring_ops,
     recurring_ops_categories,
     reports,
+    sprints,
     tasks,
     time_entries,
     upgrade_units,
@@ -56,6 +57,7 @@ api_app.include_router(tasks.router)
 api_app.include_router(time_entries.router)
 api_app.include_router(upgrade_units.router)
 api_app.include_router(reports.router)
+api_app.include_router(sprints.router)
 
 
 @api_app.get("/api/health")

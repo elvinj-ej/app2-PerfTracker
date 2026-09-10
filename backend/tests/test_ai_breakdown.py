@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import MagicMock
 
 import anthropic
@@ -8,7 +8,7 @@ import pytest
 from app.models import Initiative
 from app.models.enums import InitiativeStatus, InitiativeType
 from app.services.ai_breakdown import AiBreakdownError, TaskBreakdownService, generate_and_persist_breakdown
-from app.services.outcome_dates import validate_delivery_span
+from app.services.sprint import sprint_number_for_date
 
 
 def _fake_anthropic_response(tasks: list[dict]):
@@ -90,12 +90,12 @@ def test_generate_and_persist_breakdown_creates_editable_task_rows(db_session):
     assert [t.sequence_order for t in created] == [0, 1]
 
 
-def test_generate_and_persist_breakdown_assigns_sequential_wednesday_windows(db_session):
+def test_generate_and_persist_breakdown_assigns_sequential_sprints(db_session):
     initiative = Initiative(
         title="Test KBI",
         type=InitiativeType.KBI,
         status=InitiativeStatus.DRAFT,
-        start_date=date(2026, 8, 3),  # a Monday
+        start_date=date(2026, 8, 3),
     )
     db_session.add(initiative)
     db_session.flush()
@@ -106,8 +106,9 @@ def test_generate_and_persist_breakdown_assigns_sequential_wednesday_windows(db_
 
     created = generate_and_persist_breakdown(db_session, initiative, service=service)
 
-    assert created[0].start_date == date(2026, 8, 5)  # rolled forward to the next Wednesday
-    assert created[0].delivery_date == date(2026, 8, 19)
-    assert created[1].start_date == created[0].delivery_date  # chained, non-overlapping
+    first_sprint = sprint_number_for_date(date(2026, 8, 3))
+    assert created[0].sprint_number == first_sprint
+    assert created[1].sprint_number == first_sprint + 1
+    assert created[1].start_date == created[0].delivery_date + timedelta(days=1)  # chained, non-overlapping
     for task in created:
-        validate_delivery_span(task.start_date, task.delivery_date)
+        assert (task.delivery_date - task.start_date).days == 13

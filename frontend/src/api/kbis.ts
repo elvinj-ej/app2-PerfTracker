@@ -8,6 +8,7 @@ export interface KbiPayload {
   business_goal?: string | null
   ask?: string | null
   category_id: number
+  funded?: boolean
   jira_number?: string | null
   start_date?: string | null
   expected_delivery_date?: string | null

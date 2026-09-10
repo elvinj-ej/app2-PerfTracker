@@ -67,6 +67,7 @@ def to_kbi_read(initiative: Initiative) -> KbiRead:
         **_base_fields(initiative),
         ask=initiative.ask,
         category=KbiCategoryRead.model_validate(initiative.kbi_detail.category),
+        funded=initiative.kbi_detail.funded,
         engineer_ids=engineer_ids(initiative),
     )
 

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -11,8 +11,10 @@ class TaskBase(BaseModel):
     stage: TaskStage | None = None
     owner_engineer_id: int | None = None
     forecast_duration_days: float | None = None
-    start_date: date | None = None
-    delivery_date: date | None = None
+    # Delivery scheduling is sprint-only: engineers/managers pick a sprint number
+    # (Sx), never a raw date - start_date/delivery_date are derived server-side
+    # from it and only ever appear as read-only output (see TaskRead).
+    sprint_number: int | None = None
     status: TaskStatus = TaskStatus.NOT_STARTED
 
 
@@ -26,8 +28,7 @@ class TaskUpdate(BaseModel):
     stage: TaskStage | None = None
     owner_engineer_id: int | None = None
     forecast_duration_days: float | None = None
-    start_date: date | None = None
-    delivery_date: date | None = None
+    sprint_number: int | None = None
     status: TaskStatus | None = None
 
 
@@ -37,6 +38,9 @@ class TaskRead(TaskBase):
     id: int
     initiative_id: int
     sequence_order: int
+    start_date: date | None = None
+    delivery_date: date | None = None
+    completed_at: datetime | None = None
     is_ai_generated: bool
 
 

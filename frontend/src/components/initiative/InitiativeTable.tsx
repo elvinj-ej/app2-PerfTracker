@@ -55,6 +55,11 @@ export function InitiativeTable({
                     <div className="cell-primary">
                       <Link className="cell-title" to={detailPath(row.type, row.id)}>{row.title}</Link>
                       <CategoryPill type={row.type} detail={row.category_name} />
+                      {row.type === 'KBI' && row.funded !== null && (
+                        <span className={`badge badge-inline ${row.funded ? 'badge-green' : 'badge-gray'}`}>
+                          {row.funded ? 'Funded' : 'Unfunded'}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td>{row.status}</td>

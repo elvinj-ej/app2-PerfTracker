@@ -28,6 +28,7 @@ function NewKbiForm() {
   const [deliveryDate, setDeliveryDate] = useState('')
   const [priority, setPriority] = useState('MEDIUM')
   const [complexity, setComplexity] = useState('MEDIUM')
+  const [funded, setFunded] = useState(false)
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -36,6 +37,7 @@ function NewKbiForm() {
         business_goal: businessGoal || null,
         ask: ask || null,
         category_id: Number(categoryId),
+        funded,
         jira_number: jira || null,
         start_date: startDate || null,
         expected_delivery_date: deliveryDate || null,
@@ -53,6 +55,7 @@ function NewKbiForm() {
       setJira('')
       setStartDate('')
       setDeliveryDate('')
+      setFunded(false)
     },
   })
 
@@ -105,6 +108,11 @@ function NewKbiForm() {
             <option value="MEDIUM">Medium</option>
             <option value="HIGH">High</option>
           </select>
+        </FormField>
+        <FormField label="Funded" hint="Whether budget has been approved for this Ask">
+          <label>
+            <input type="checkbox" checked={funded} onChange={(e) => setFunded(e.target.checked)} /> Funded
+          </label>
         </FormField>
       </div>
       <button className="btn btn-primary" disabled={!title || !categoryId || mutation.isPending} onClick={() => mutation.mutate()}>
@@ -207,6 +215,7 @@ export function KbiCatalogPage() {
                     onSort={handleSort}
                   />
                   <SortableTh label="Status" sortKey="status" currentKey={sortKey} direction={sortDir} onSort={handleSort} />
+                  <th>Funded</th>
                   <th></th>
                 </tr>
               </thead>
@@ -219,6 +228,11 @@ export function KbiCatalogPage() {
                     <td>{kbi.complexity ?? '—'}</td>
                     <td>{kbi.expected_delivery_date ?? '—'}</td>
                     <td>{kbi.status}</td>
+                    <td>
+                      <span className={`badge badge-inline ${kbi.funded ? 'badge-green' : 'badge-gray'}`}>
+                        {kbi.funded ? 'Funded' : 'Unfunded'}
+                      </span>
+                    </td>
                     <td>
                       <Link to={`/kbis/${kbi.id}`}>View</Link>
                     </td>

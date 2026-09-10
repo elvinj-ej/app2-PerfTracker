@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import AiBreakdownRequest, Initiative, Task
 from app.models.enums import TaskStage
-from app.services.outcome_dates import sequential_wednesday_windows
+from app.services.sprint import max_sprint_number, sprint_bounds, sprint_number_for_date
 
 SYSTEM_PROMPT = """You are assisting a Hosting, Platform & Database engineering team in breaking \
 down a work initiative into a list of Outcomes - the concrete, ownable pieces of work that \
@@ -191,13 +191,16 @@ def generate_and_persist_breakdown(
         db.commit()
         raise
 
-    # Date math is computed here, not trusted to the LLM: each suggested Outcome gets a
-    # sequential, non-overlapping two-week Wednesday-to-Wednesday window, chained off the
-    # initiative's start date (or today, if unset).
-    windows = sequential_wednesday_windows(initiative.start_date or date.today(), len(suggested_tasks))
+    # Sprint assignment is computed here, not trusted to the LLM: each suggested Outcome
+    # gets the next sequential sprint, chained off the initiative's start date (or today,
+    # if unset), clamped to the last sprint in the calendar if the breakdown runs past it.
+    first_sprint = sprint_number_for_date(initiative.start_date or date.today())
+    last_sprint = max_sprint_number()
 
     created_tasks = []
-    for suggestion, (start_date, delivery_date) in zip(suggested_tasks, windows):
+    for i, suggestion in enumerate(suggested_tasks):
+        sprint_number = min(first_sprint + i, last_sprint)
+        start_date, delivery_date = sprint_bounds(sprint_number)
         task = Task(
             initiative_id=initiative.id,
             title=suggestion.title,
@@ -205,6 +208,7 @@ def generate_and_persist_breakdown(
             stage=suggestion.stage,
             owner_engineer_id=None,
             forecast_duration_days=suggestion.forecast_duration_days,
+            sprint_number=sprint_number,
             start_date=start_date,
             delivery_date=delivery_date,
             sequence_order=next_order + suggestion.sequence_order,

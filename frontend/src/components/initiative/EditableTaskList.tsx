@@ -1,11 +1,13 @@
-import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { createTask, deleteTask, reorderTasks, updateTask, type TaskPayload } from '../../api/tasks'
+import { getSprints } from '../../api/sprints'
 import { Alert } from '../common/Alert'
 import { useActor } from '../../context/ActorContext'
 import { useConfirm } from '../../context/ConfirmContext'
 import { useToast } from '../../context/ToastContext'
-import type { Engineer, Task } from '../../types/api'
+import type { Engineer, Sprint, Task } from '../../types/api'
+import { MAX_FORECAST_DAYS } from '../../data/sprintConstants'
 
 interface Props {
   initiativeId: number
@@ -40,8 +42,19 @@ export function EditableTaskList({
   const [bulkTitles, setBulkTitles] = useState('')
   const [newOwnerId, setNewOwnerId] = useState(actor.role === 'engineer' ? String(actor.engineerId) : '')
   const [newForecast, setNewForecast] = useState('')
-  const [newStartDate, setNewStartDate] = useState('')
-  const [newDeliveryDate, setNewDeliveryDate] = useState('')
+  const [newSprint, setNewSprint] = useState('')
+
+  const { data: sprints } = useQuery({ queryKey: ['sprints'], queryFn: () => getSprints(actor) })
+  const currentSprint = sprints?.find((s) => s.is_current)
+
+  useEffect(() => {
+    if (!newSprint && currentSprint) setNewSprint(String(currentSprint.number))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSprint])
+
+  function sprintLabel(s: Sprint): string {
+    return `${s.label} — ${s.start_date} – ${s.end_date}`
+  }
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: invalidateKey })
 
@@ -72,8 +85,7 @@ export function EditableTaskList({
       title,
       owner_engineer_id: newOwnerId ? Number(newOwnerId) : null,
       forecast_duration_days: newForecast ? Number(newForecast) : null,
-      start_date: newStartDate || null,
-      delivery_date: newDeliveryDate || null,
+      sprint_number: newSprint ? Number(newSprint) : null,
     }
   }
 
@@ -85,8 +97,7 @@ export function EditableTaskList({
       setNewTitle('')
       setNewOwnerId('')
       setNewForecast('')
-      setNewStartDate('')
-      setNewDeliveryDate('')
+      setNewSprint(currentSprint ? String(currentSprint.number) : '')
     },
   })
   const bulkCreateMutation = useMutation({
@@ -138,11 +149,12 @@ export function EditableTaskList({
         )}
       </div>
       <p className="text-muted">
-        An Outcome answers the initiative's Ask. Delivery must land within two weeks of the start
-        date, and both dates must fall on a Wednesday — split larger work into multiple Outcomes.
-        Working through a list of similar items (servers, UPS units, ...)? Use "Add multiple at
-        once" below to create one Outcome per item in a single step. Generated or bulk-created
-        Outcomes start Unassigned — an engineer claims the ones they want via the Owner column.
+        An Outcome answers the initiative's Ask. Pick a sprint (Sx) for delivery — start and end
+        dates are set automatically — and a forecast of up to {MAX_FORECAST_DAYS} working days for
+        that sprint. Working through a list of similar items (servers, UPS units, ...)? Use "Add
+        multiple at once" below to create one Outcome per item in a single step. Generated or
+        bulk-created Outcomes start Unassigned — an engineer claims the ones they want via the
+        Owner column.
       </p>
       {generateMutation.isError && (
         <Alert variant="error">{(generateMutation.error as Error).message}</Alert>
@@ -168,8 +180,7 @@ export function EditableTaskList({
                 <th>Stage</th>
                 <th>Owner</th>
                 {showForecast && <th>Forecast (days)</th>}
-                <th>Start Date</th>
-                <th>Delivery Date</th>
+                <th>Sprint</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -212,6 +223,8 @@ export function EditableTaskList({
                     <td>
                       <input
                         type="number"
+                        min={0}
+                        max={MAX_FORECAST_DAYS}
                         className="input-narrow"
                         defaultValue={task.forecast_duration_days ?? ''}
                         onBlur={(e) => {
@@ -222,24 +235,22 @@ export function EditableTaskList({
                     </td>
                   )}
                   <td>
-                    <input
-                      type="date"
-                      defaultValue={task.start_date ?? ''}
-                      onBlur={(e) => {
-                        const value = e.target.value === '' ? null : e.target.value
-                        updateMutation.mutate({ taskId: task.id, payload: { start_date: value } })
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="date"
-                      defaultValue={task.delivery_date ?? ''}
-                      onBlur={(e) => {
-                        const value = e.target.value === '' ? null : e.target.value
-                        updateMutation.mutate({ taskId: task.id, payload: { delivery_date: value } })
-                      }}
-                    />
+                    <select
+                      value={task.sprint_number ?? ''}
+                      onChange={(e) =>
+                        updateMutation.mutate({
+                          taskId: task.id,
+                          payload: { sprint_number: e.target.value ? Number(e.target.value) : null },
+                        })
+                      }
+                    >
+                      <option value="">Unscheduled</option>
+                      {(sprints ?? []).map((s) => (
+                        <option key={s.number} value={s.number}>
+                          {sprintLabel(s)}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td>
                     <select
@@ -292,6 +303,8 @@ export function EditableTaskList({
             {showForecast && (
               <input
                 type="number"
+                min={0}
+                max={MAX_FORECAST_DAYS}
                 placeholder="Forecast days (each)"
                 className="input-narrow"
                 value={newForecast}
@@ -299,12 +312,15 @@ export function EditableTaskList({
               />
             )}
             <label>
-              Start
-              <input type="date" value={newStartDate} onChange={(e) => setNewStartDate(e.target.value)} />
-            </label>
-            <label>
-              Delivery
-              <input type="date" value={newDeliveryDate} onChange={(e) => setNewDeliveryDate(e.target.value)} />
+              Sprint
+              <select value={newSprint} onChange={(e) => setNewSprint(e.target.value)}>
+                <option value="">Unscheduled</option>
+                {(sprints ?? []).map((s) => (
+                  <option key={s.number} value={s.number}>
+                    {sprintLabel(s)}
+                  </option>
+                ))}
+              </select>
             </label>
             <button
               className="btn btn-primary"
@@ -331,6 +347,8 @@ export function EditableTaskList({
           {showForecast && (
             <input
               type="number"
+              min={0}
+              max={MAX_FORECAST_DAYS}
               placeholder="Forecast days"
               className="input-narrow"
               value={newForecast}
@@ -338,12 +356,15 @@ export function EditableTaskList({
             />
           )}
           <label>
-            Start
-            <input type="date" value={newStartDate} onChange={(e) => setNewStartDate(e.target.value)} />
-          </label>
-          <label>
-            Delivery
-            <input type="date" value={newDeliveryDate} onChange={(e) => setNewDeliveryDate(e.target.value)} />
+            Sprint
+            <select value={newSprint} onChange={(e) => setNewSprint(e.target.value)}>
+              <option value="">Unscheduled</option>
+              {(sprints ?? []).map((s) => (
+                <option key={s.number} value={s.number}>
+                  {sprintLabel(s)}
+                </option>
+              ))}
+            </select>
           </label>
           <button
             className="btn btn-primary"

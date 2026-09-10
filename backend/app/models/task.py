@@ -24,11 +24,19 @@ class Task(Base):
     # until an engineer opts into the Ask and claims it via the owner dropdown.
     owner_engineer_id: Mapped[int | None] = mapped_column(ForeignKey("engineers.id"), nullable=True)
     forecast_duration_days: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
+    # Source of truth for scheduling: engineers/managers pick a sprint (Sx), never a raw
+    # date - start_date/delivery_date below are always derived from it (see sprint.py) and
+    # kept only for cheap, join-free reads.
+    sprint_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[TaskStatus] = mapped_column(
         Enum(TaskStatus, name="task_status"), nullable=False, default=TaskStatus.NOT_STARTED
     )
+    # Set when status transitions to COMPLETE (and cleared if it moves away again) - the
+    # timestamp "delivered this sprint" KPIs key off, since a raw updated_at would also
+    # move on unrelated edits to an already-completed Outcome.
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_ai_generated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

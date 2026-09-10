@@ -39,7 +39,7 @@ export function Sidebar() {
                   className={({ isActive }) => (isActive ? 'sidebar-link sidebar-link-active' : 'sidebar-link')}
                 >
                   <NavIcon name={item.icon} />
-                  <span>{item.label}</span>
+                  <span>{item.to === '/' && actor.role === 'manager' ? 'Team Dashboard' : item.label}</span>
                   {streamVar && <span className="sidebar-link-dot" style={{ background: `var(${streamVar})` }} />}
                 </NavLink>
               )

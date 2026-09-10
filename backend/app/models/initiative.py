@@ -114,6 +114,7 @@ class KbiDetail(Base):
 
     initiative_id: Mapped[int] = mapped_column(ForeignKey("initiatives.id"), primary_key=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("kbi_categories.id"), nullable=False)
+    funded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     initiative = relationship("Initiative", back_populates="kbi_detail")
     category = relationship("KbiCategory", back_populates="details")

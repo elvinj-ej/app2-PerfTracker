@@ -55,6 +55,7 @@ export interface InitiativeSummary {
   expected_pct: number | null
   timeline_health: TimelineHealth
   total_hours_logged: number
+  funded: boolean | null
 }
 
 export interface TaskSummary {
@@ -67,6 +68,19 @@ export interface TaskSummary {
   status: TaskStatus
   forecast_duration_days: number | null
   actual_hours_logged: number
+  owner_engineer_id: number | null
+  owner_engineer_name: string | null
+  sprint_number: number | null
+  completed_at: string | null
+  initiative_timeline_health: TimelineHealth
+}
+
+export interface Sprint {
+  number: number
+  label: string
+  start_date: string
+  end_date: string
+  is_current: boolean
 }
 
 export interface WeeklyHours {
@@ -94,8 +108,10 @@ export interface Task {
   stage: TaskStage | null
   owner_engineer_id: number | null
   forecast_duration_days: number | null
+  sprint_number: number | null
   start_date: string | null
   delivery_date: string | null
+  completed_at: string | null
   status: TaskStatus
   sequence_order: number
   is_ai_generated: boolean
@@ -109,6 +125,7 @@ export interface Kbi {
   business_goal: string | null
   ask: string | null
   category: KbiCategory
+  funded: boolean
   jira_number: string | null
   start_date: string | null
   expected_delivery_date: string | null
@@ -186,6 +203,7 @@ export interface TeamSummary {
   recurring_ops: InitiativeSummary[]
   hours_by_category: CategoryHours[]
   hours_by_engineer: EngineerHoursBreakdown[]
+  tasks: TaskSummary[]
 }
 
 export interface MonthlyTaskDetail {

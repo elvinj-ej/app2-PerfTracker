@@ -49,6 +49,7 @@ interface MarketplaceRow {
   cadenceLabel: string
   detailPath: string
   engineerIds: number[]
+  funded: boolean | null
   optIn: () => Promise<void>
   optOut: () => Promise<void>
   invalidateKey: string
@@ -83,6 +84,7 @@ export function MarketplacePage() {
       cadenceLabel: kbi.expected_delivery_date ? `Deliver by ${kbi.expected_delivery_date}` : 'No delivery date set',
       detailPath: `/kbis/${kbi.id}`,
       engineerIds: kbi.engineer_ids,
+      funded: kbi.funded,
       optIn: () => optInKbi(actor, kbi.id),
       optOut: () => optOutKbi(actor, kbi.id),
       invalidateKey: 'kbis',
@@ -96,6 +98,7 @@ export function MarketplacePage() {
       cadenceLabel: p.expected_delivery_date ? `Deliver by ${p.expected_delivery_date}` : 'No delivery date set',
       detailPath: `/platform-initiatives/${p.id}`,
       engineerIds: p.engineer_ids,
+      funded: null,
       optIn: () => optInPlatformInitiative(actor, p.id),
       optOut: () => optOutPlatformInitiative(actor, p.id),
       invalidateKey: 'platform-initiatives',
@@ -109,6 +112,7 @@ export function MarketplacePage() {
       cadenceLabel: RECURRENCE_LABELS[r.recurrence_type] ?? r.recurrence_type,
       detailPath: `/recurring-ops/${r.id}`,
       engineerIds: r.engineer_ids,
+      funded: null,
       optIn: () => optInRecurringOps(actor, r.id),
       optOut: () => optOutRecurringOps(actor, r.id),
       invalidateKey: 'recurring-ops',
@@ -251,6 +255,11 @@ export function MarketplacePage() {
                             {row.title}
                           </Link>
                           <CategoryPill type={row.type} detail={row.categoryName} />
+                          {row.type === 'KBI' && row.funded !== null && (
+                            <span className={`badge badge-inline ${row.funded ? 'badge-green' : 'badge-gray'}`}>
+                              {row.funded ? 'Funded' : 'Unfunded'}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>

@@ -30,6 +30,7 @@ from app.services.completion import (
     UpgradeUnitLike,
     compute_initiative_completion,
 )
+from app.services.sprint import sprint_bounds, sprint_number_for_date
 
 
 def _task_hours_map(db: Session, task_ids: list[int]) -> dict[int, float]:
@@ -79,6 +80,12 @@ def _compute_completion(initiative: Initiative) -> CompletionResult:
     )
 
 
+def _funded(initiative: Initiative) -> bool | None:
+    if initiative.type == InitiativeType.KBI and initiative.kbi_detail:
+        return initiative.kbi_detail.funded
+    return None
+
+
 def build_initiative_summary(initiative: Initiative, hours_by_task: dict[int, float]) -> InitiativeSummary:
     result = _compute_completion(initiative)
     total_hours = sum(hours_by_task.get(t.id, 0.0) for t in initiative.tasks)
@@ -95,6 +102,7 @@ def build_initiative_summary(initiative: Initiative, hours_by_task: dict[int, fl
         expected_pct=result.expected_pct,
         timeline_health=result.timeline_health,
         total_hours_logged=total_hours,
+        funded=_funded(initiative),
     )
 
 
@@ -132,6 +140,35 @@ def _load_initiatives(db: Session, initiative_ids: list[int]) -> list[Initiative
     )
 
 
+def _timeline_health_for(initiative: Initiative) -> TimelineHealth:
+    if initiative.type == InitiativeType.RECURRING_OPS:
+        return TimelineHealth.NOT_APPLICABLE
+    return _compute_completion(initiative).timeline_health
+
+
+def _build_task_summary(t: Task, hours_by_task: dict[int, float], timeline_health_by_initiative: dict[int, TimelineHealth]) -> TaskSummary:
+    return TaskSummary(
+        id=t.id,
+        initiative_id=t.initiative_id,
+        initiative_title=t.initiative.title,
+        initiative_type=t.initiative.type,
+        title=t.title,
+        stage=t.stage,
+        status=t.status,
+        forecast_duration_days=(float(t.forecast_duration_days) if t.forecast_duration_days is not None else None),
+        actual_hours_logged=hours_by_task.get(t.id, 0.0),
+        owner_engineer_id=t.owner_engineer_id,
+        owner_engineer_name=t.owner.name if t.owner else None,
+        sprint_number=t.sprint_number,
+        completed_at=t.completed_at,
+        initiative_timeline_health=timeline_health_by_initiative.get(t.initiative_id, TimelineHealth.NOT_APPLICABLE),
+    )
+
+
+def _current_sprint_bounds() -> tuple[date, date]:
+    return sprint_bounds(sprint_number_for_date(date.today()))
+
+
 def build_engineer_dashboard(db: Session, engineer: Engineer) -> EngineerDashboard:
     initiative_ids = [link.initiative_id for link in engineer.initiative_links]
     initiatives = _load_initiatives(db, initiative_ids)
@@ -146,31 +183,17 @@ def build_engineer_dashboard(db: Session, engineer: Engineer) -> EngineerDashboa
     recurring_ops = [
         build_recurring_ops_summary(i, hours_by_task) for i in initiatives if i.type == InitiativeType.RECURRING_OPS
     ]
+    timeline_health_by_initiative = {i.id: _timeline_health_for(i) for i in initiatives}
 
     owned_tasks = (
         db.query(Task)
         .filter(Task.owner_engineer_id == engineer.id)
-        .options(selectinload(Task.initiative))
+        .options(selectinload(Task.initiative), selectinload(Task.owner))
         .all()
     )
     owned_hours_by_task = _task_hours_map(db, [t.id for t in owned_tasks])
 
-    task_summaries = [
-        TaskSummary(
-            id=t.id,
-            initiative_id=t.initiative_id,
-            initiative_title=t.initiative.title,
-            initiative_type=t.initiative.type,
-            title=t.title,
-            stage=t.stage,
-            status=t.status,
-            forecast_duration_days=(
-                float(t.forecast_duration_days) if t.forecast_duration_days is not None else None
-            ),
-            actual_hours_logged=owned_hours_by_task.get(t.id, 0.0),
-        )
-        for t in owned_tasks
-    ]
+    task_summaries = [_build_task_summary(t, owned_hours_by_task, timeline_health_by_initiative) for t in owned_tasks]
 
     weekly_rows = (
         db.query(TimeEntry.week_start_date, TimeEntry.fiscal_year_label, Initiative.type, func.sum(TimeEntry.hours))
@@ -220,11 +243,15 @@ def build_team_summary(db: Session) -> TeamSummary:
     recurring_ops = [
         build_recurring_ops_summary(i, hours_by_task) for i in initiatives if i.type == InitiativeType.RECURRING_OPS
     ]
+    timeline_health_by_initiative = {i.id: _timeline_health_for(i) for i in initiatives}
+
+    sprint_start, sprint_end = _current_sprint_bounds()
 
     category_rows = (
         db.query(Initiative.type, func.sum(TimeEntry.hours))
         .join(Task, TimeEntry.task_id == Task.id)
         .join(Initiative, Task.initiative_id == Initiative.id)
+        .filter(TimeEntry.week_start_date >= sprint_start, TimeEntry.week_start_date <= sprint_end)
         .group_by(Initiative.type)
         .all()
     )
@@ -235,6 +262,7 @@ def build_team_summary(db: Session) -> TeamSummary:
         .join(TimeEntry, TimeEntry.engineer_id == Engineer.id)
         .join(Task, TimeEntry.task_id == Task.id)
         .join(Initiative, Task.initiative_id == Initiative.id)
+        .filter(TimeEntry.week_start_date >= sprint_start, TimeEntry.week_start_date <= sprint_end)
         .group_by(Engineer.id, Engineer.name, Initiative.type)
         .order_by(Engineer.name)
         .all()
@@ -250,12 +278,22 @@ def build_team_summary(db: Session) -> TeamSummary:
         breakdown.hours_by_type[itype] = float(hours)
         breakdown.total_hours += float(hours)
 
+    all_tasks = (
+        db.query(Task)
+        .join(Initiative, Task.initiative_id == Initiative.id)
+        .options(selectinload(Task.initiative), selectinload(Task.owner))
+        .all()
+    )
+    all_task_hours = _task_hours_map(db, [t.id for t in all_tasks])
+    task_summaries = [_build_task_summary(t, all_task_hours, timeline_health_by_initiative) for t in all_tasks]
+
     return TeamSummary(
         kbis=kbis,
         platform_initiatives=platform_initiatives,
         recurring_ops=recurring_ops,
         hours_by_category=hours_by_category,
         hours_by_engineer=sorted(breakdown_by_engineer.values(), key=lambda b: b.engineer_name),
+        tasks=task_summaries,
     )
 
 

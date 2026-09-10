@@ -39,10 +39,11 @@ def create_kbi(
     _get_category_or_404(db, payload.category_id)
     data = payload.model_dump()
     category_id = data.pop("category_id")
+    funded = data.pop("funded")
     initiative = Initiative(type=InitiativeType.KBI, **data)
     db.add(initiative)
     db.flush()
-    db.add(KbiDetail(initiative_id=initiative.id, category_id=category_id))
+    db.add(KbiDetail(initiative_id=initiative.id, category_id=category_id, funded=funded))
     db.commit()
     initiative = query_by_type(db, InitiativeType.KBI).filter(Initiative.id == initiative.id).first()
     return to_kbi_read(initiative)
@@ -74,6 +75,8 @@ def update_kbi(
     if category_id is not None:
         _get_category_or_404(db, category_id)
         initiative.kbi_detail.category_id = category_id
+    if "funded" in data:
+        initiative.kbi_detail.funded = data.pop("funded")
     for field, value in data.items():
         setattr(initiative, field, value)
     db.commit()

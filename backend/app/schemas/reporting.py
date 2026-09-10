@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -18,6 +18,7 @@ class InitiativeSummary(BaseModel):
     expected_pct: float | None
     timeline_health: TimelineHealth
     total_hours_logged: float
+    funded: bool | None = None
 
 
 class TaskSummary(BaseModel):
@@ -30,6 +31,11 @@ class TaskSummary(BaseModel):
     status: TaskStatus
     forecast_duration_days: float | None
     actual_hours_logged: float
+    owner_engineer_id: int | None = None
+    owner_engineer_name: str | None = None
+    sprint_number: int | None = None
+    completed_at: datetime | None = None
+    initiative_timeline_health: TimelineHealth = TimelineHealth.NOT_APPLICABLE
 
 
 class WeeklyHours(BaseModel):
@@ -67,6 +73,7 @@ class TeamSummary(BaseModel):
     recurring_ops: list[InitiativeSummary]
     hours_by_category: list[CategoryHours]
     hours_by_engineer: list[EngineerHoursBreakdown]
+    tasks: list[TaskSummary]
 
 
 class MonthlyTaskDetail(BaseModel):
