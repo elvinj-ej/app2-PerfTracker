@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { createKbi, listKbiCategories, listKbis } from '../api/kbis'
+import { createKbi, listKbiCategories, listKbis, updateKbi } from '../api/kbis'
 import { Alert } from '../components/common/Alert'
 import { FormField } from '../components/common/FormField'
 import { SortableTh } from '../components/common/SortableTh'
@@ -133,10 +133,20 @@ const SORT_ACCESSORS: Record<SortKey, (k: Kbi) => string> = {
 
 export function KbiCatalogPage() {
   const { actor } = useActor()
+  const queryClient = useQueryClient()
+  const toast = useToast()
   const { data, isLoading } = useQuery({ queryKey: ['kbis'], queryFn: () => listKbis(actor) })
   const [keyword, setKeyword] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const toggleFundedMutation = useMutation({
+    mutationFn: (kbi: Kbi) => updateKbi(actor, kbi.id, { funded: !kbi.funded }),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['kbis'] })
+      toast.success(updated.funded ? 'Marked as Funded' : 'Marked as Unfunded')
+    },
+  })
 
   function handleSort(key: SortKey) {
     if (key === sortKey) {
@@ -229,9 +239,21 @@ export function KbiCatalogPage() {
                     <td>{kbi.expected_delivery_date ?? '—'}</td>
                     <td>{kbi.status}</td>
                     <td>
-                      <span className={`badge badge-inline ${kbi.funded ? 'badge-green' : 'badge-gray'}`}>
-                        {kbi.funded ? 'Funded' : 'Unfunded'}
-                      </span>
+                      {actor.role === 'manager' ? (
+                        <button
+                          type="button"
+                          className={`badge badge-inline badge-clickable ${kbi.funded ? 'badge-green' : 'badge-gray'}`}
+                          disabled={toggleFundedMutation.isPending}
+                          onClick={() => toggleFundedMutation.mutate(kbi)}
+                          title="Click to toggle funded status"
+                        >
+                          {kbi.funded ? 'Funded' : 'Unfunded'}
+                        </button>
+                      ) : (
+                        <span className={`badge badge-inline ${kbi.funded ? 'badge-green' : 'badge-gray'}`}>
+                          {kbi.funded ? 'Funded' : 'Unfunded'}
+                        </span>
+                      )}
                     </td>
                     <td>
                       <Link to={`/kbis/${kbi.id}`}>View</Link>

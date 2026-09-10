@@ -472,6 +472,15 @@ tbody tr:last-child td {
 .badge-red { background: var(--red-bg); color: var(--red); }
 .badge-gray { background: var(--gray-bg); color: var(--text-muted); }
 
+.badge-clickable {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+}
+.badge-clickable:hover { filter: brightness(0.95); }
+.badge-clickable:disabled { cursor: default; opacity: 0.6; }
+
 .progress-bar {
   position: relative;
   width: 120px;

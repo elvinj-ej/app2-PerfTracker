@@ -4,14 +4,14 @@ No DB table backs this: sprint boundaries are fully deterministic from the fixed
 epoch below, so storing them would just be denormalized data with no independent
 lifecycle - same rationale as fiscal_year.py's week/FY helpers.
 
-S1 starts the first Wednesday of July 2026 and the calendar runs through the end
-of June 2027 (one fiscal year's worth of sprints, ~26 of them).
+S1 starts Wed Jul 8, 2026 and the calendar runs through the end of June 2027
+(one fiscal year's worth of sprints, ~25 of them).
 """
 
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-SPRINT_EPOCH = date(2026, 7, 1)  # S1 start - confirmed Wednesday
+SPRINT_EPOCH = date(2026, 7, 8)  # S1 start - confirmed Wednesday
 SPRINT_LENGTH_DAYS = 14
 CYCLE_END = date(2027, 6, 30)
 MAX_FORECAST_DAYS = 11

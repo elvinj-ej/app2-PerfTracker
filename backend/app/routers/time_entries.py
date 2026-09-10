@@ -7,7 +7,8 @@ from app.core.auth_context import Actor, get_current_actor
 from app.database import get_db
 from app.models import Task, TimeEntry
 from app.schemas.time_entry import TimeEntryRead, TimeEntryUpsert
-from app.services.fiscal_year import fiscal_year_label, week_start
+from app.services.fiscal_year import fiscal_year_label
+from app.services.sprint import sprint_bounds, sprint_number_for_date
 
 router = APIRouter(tags=["time-entries"])
 
@@ -52,18 +53,21 @@ def upsert_time_entry(
     if engineer_id != task.owner_engineer_id:
         raise HTTPException(status_code=400, detail="Only the task's owning engineer may log time against it")
 
-    week = week_start(payload.week_start_date)
+    # week_start_date is keyed to the sprint's start date (always a Wednesday) rather than
+    # an ISO week's Monday now that logging is per-sprint - snapped server-side to whichever
+    # sprint actually contains the submitted date, never trusting the client's math.
+    sprint_start, _ = sprint_bounds(sprint_number_for_date(payload.week_start_date))
     entry = (
         db.query(TimeEntry)
-        .filter(TimeEntry.task_id == task.id, TimeEntry.week_start_date == week)
+        .filter(TimeEntry.task_id == task.id, TimeEntry.week_start_date == sprint_start)
         .first()
     )
     if entry is None:
         entry = TimeEntry(
             task_id=task.id,
             engineer_id=engineer_id,
-            week_start_date=week,
-            fiscal_year_label=fiscal_year_label(week),
+            week_start_date=sprint_start,
+            fiscal_year_label=fiscal_year_label(sprint_start),
             hours=payload.hours,
             notes=payload.notes,
         )
@@ -88,9 +92,9 @@ def delete_time_entry(entry_id: int, db: Session = Depends(get_db)):
 
 @router.get("/api/engineers/{engineer_id}/time-entries/week/{week_start_date}", response_model=list[TimeEntryRead])
 def get_engineer_week(engineer_id: int, week_start_date: date, db: Session = Depends(get_db)):
-    week = week_start(week_start_date)
+    sprint_start, _ = sprint_bounds(sprint_number_for_date(week_start_date))
     return (
         db.query(TimeEntry)
-        .filter(TimeEntry.engineer_id == engineer_id, TimeEntry.week_start_date == week)
+        .filter(TimeEntry.engineer_id == engineer_id, TimeEntry.week_start_date == sprint_start)
         .all()
     )

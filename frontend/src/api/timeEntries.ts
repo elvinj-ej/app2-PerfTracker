@@ -12,7 +12,7 @@ export function listTimeEntries(actor: Actor, params: { engineerId?: number; tas
 
 export function upsertTimeEntry(
   actor: Actor,
-  payload: { task_id: number; week_start_date: string; hours: number; notes?: string | null },
+  payload: { task_id: number; week_start_date: string; hours: number; notes?: string | null; engineer_id?: number | null },
 ): Promise<TimeEntry> {
   return apiFetch<TimeEntry>('/api/time-entries', actor, { method: 'POST', body: JSON.stringify(payload) })
 }

@@ -3,27 +3,18 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listEngineers } from '../api/engineers'
 import { getEngineerDashboard } from '../api/reports'
+import { getSprints } from '../api/sprints'
 import { listTimeEntries, upsertTimeEntry } from '../api/timeEntries'
 import { Alert } from '../components/common/Alert'
 import { useActor } from '../context/ActorContext'
 import { useToast } from '../context/ToastContext'
-
-function mondayOf(dateStr: string): string {
-  const d = new Date(`${dateStr}T00:00:00`)
-  const dayIndex = (d.getDay() + 6) % 7 // 0 = Monday
-  d.setDate(d.getDate() - dayIndex)
-  return d.toISOString().slice(0, 10)
-}
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 export function WeeklyTimeEntryPage() {
   const { actor } = useActor()
   const queryClient = useQueryClient()
   const toast = useToast()
   const { data: engineers } = useQuery({ queryKey: ['engineers'], queryFn: () => listEngineers(actor) })
+  const { data: sprints } = useQuery({ queryKey: ['sprints'], queryFn: () => getSprints(actor) })
 
   const [selectedEngineerId, setSelectedEngineerId] = useState<number | undefined>(
     actor.role === 'engineer' ? actor.engineerId : undefined,
@@ -36,7 +27,15 @@ export function WeeklyTimeEntryPage() {
     }
   }, [actor, engineers, selectedEngineerId])
 
-  const [weekStart, setWeekStart] = useState(mondayOf(todayIso()))
+  const [sprintNumber, setSprintNumber] = useState<number | undefined>(undefined)
+  useEffect(() => {
+    if (sprintNumber === undefined && sprints && sprints.length > 0) {
+      setSprintNumber(sprints.find((s) => s.is_current)?.number ?? sprints[0].number)
+    }
+  }, [sprints, sprintNumber])
+
+  const selectedSprint = sprints?.find((s) => s.number === sprintNumber)
+  const sprintStart = selectedSprint?.start_date
 
   const dashboardQuery = useQuery({
     queryKey: ['engineer-dashboard', selectedEngineerId],
@@ -52,19 +51,23 @@ export function WeeklyTimeEntryPage() {
   const entriesByTask = useMemo(() => {
     const map = new Map<number, number>()
     for (const entry of entriesQuery.data ?? []) {
-      if (entry.week_start_date === weekStart) map.set(entry.task_id, entry.hours)
+      if (entry.week_start_date === sprintStart) map.set(entry.task_id, entry.hours)
     }
     return map
-  }, [entriesQuery.data, weekStart])
+  }, [entriesQuery.data, sprintStart])
 
   const [draftHours, setDraftHours] = useState<Record<number, string>>({})
+  useEffect(() => {
+    setDraftHours({})
+  }, [sprintNumber, selectedEngineerId])
 
   const saveMutation = useMutation({
     mutationFn: (taskId: number) =>
       upsertTimeEntry(actor, {
         task_id: taskId,
-        week_start_date: weekStart,
+        week_start_date: sprintStart as string,
         hours: Number(draftHours[taskId] ?? entriesByTask.get(taskId) ?? 0),
+        engineer_id: selectedEngineerId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-entries', selectedEngineerId] })
@@ -78,7 +81,7 @@ export function WeeklyTimeEntryPage() {
   return (
     <div className="page">
       <div className="page-toolbar">
-        <h1 className="page-title">Log Weekly Time</h1>
+        <h1 className="page-title">Log Time</h1>
         <label>
           Engineer
           <select
@@ -94,8 +97,14 @@ export function WeeklyTimeEntryPage() {
           </select>
         </label>
         <label>
-          Week starting
-          <input type="date" value={weekStart} onChange={(e) => setWeekStart(mondayOf(e.target.value))} />
+          Sprint
+          <select value={sprintNumber ?? ''} onChange={(e) => setSprintNumber(Number(e.target.value))}>
+            {(sprints ?? []).map((s) => (
+              <option key={s.number} value={s.number}>
+                {s.label} — {s.start_date} – {s.end_date}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 
@@ -113,7 +122,7 @@ export function WeeklyTimeEntryPage() {
                 <tr>
                   <th>Outcome</th>
                   <th>Initiative</th>
-                  <th>Hours this week</th>
+                  <th>Hours this sprint</th>
                   <th></th>
                 </tr>
               </thead>
@@ -134,7 +143,7 @@ export function WeeklyTimeEntryPage() {
                       <button
                         className="btn btn-secondary"
                         onClick={() => saveMutation.mutate(task.id)}
-                        disabled={saveMutation.isPending}
+                        disabled={saveMutation.isPending || sprintStart === undefined}
                       >
                         Save
                       </button>

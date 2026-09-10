@@ -20,7 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 # Mirrors app/services/sprint.py - inlined rather than imported so this migration's
 # behavior stays fixed even if the service's logic changes later.
-SPRINT_EPOCH = date(2026, 7, 1)
+SPRINT_EPOCH = date(2026, 7, 8)
 SPRINT_LENGTH_DAYS = 14
 CYCLE_END = date(2027, 6, 30)
 

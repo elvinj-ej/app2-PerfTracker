@@ -10,28 +10,28 @@ from app.services.sprint import (
 )
 
 
-def test_epoch_is_first_wednesday_of_july_2026():
-    assert SPRINT_EPOCH == date(2026, 7, 1)
+def test_epoch_is_the_confirmed_s1_start_date():
+    assert SPRINT_EPOCH == date(2026, 7, 8)
     assert SPRINT_EPOCH.weekday() == 2  # Wednesday
 
 
 def test_sprint_bounds_s1_is_a_14_day_window_from_the_epoch():
     start, end = sprint_bounds(1)
-    assert start == date(2026, 7, 1)
-    assert end == date(2026, 7, 14)
+    assert start == date(2026, 7, 8)
+    assert end == date(2026, 7, 21)
 
 
 def test_sprint_bounds_s2_starts_the_day_after_s1_ends():
     _, s1_end = sprint_bounds(1)
     s2_start, _ = sprint_bounds(2)
-    assert s2_start == date(2026, 7, 15)
+    assert s2_start == date(2026, 7, 22)
     assert s2_start > s1_end
 
 
 def test_sprint_number_for_date_within_s1():
-    assert sprint_number_for_date(date(2026, 7, 1)) == 1
-    assert sprint_number_for_date(date(2026, 7, 14)) == 1
-    assert sprint_number_for_date(date(2026, 7, 15)) == 2
+    assert sprint_number_for_date(date(2026, 7, 8)) == 1
+    assert sprint_number_for_date(date(2026, 7, 21)) == 1
+    assert sprint_number_for_date(date(2026, 7, 22)) == 2
 
 
 def test_sprint_number_for_date_before_epoch_clamps_to_s1():
