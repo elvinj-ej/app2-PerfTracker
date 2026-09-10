@@ -124,3 +124,38 @@ class MonthlyReport(BaseModel):
     kbis: list[MonthlyInitiativeReport]
     platform_initiatives: list[MonthlyInitiativeReport]
     recurring_ops: list[MonthlyInitiativeReport]
+
+
+class FundedOutcomeDetail(BaseModel):
+    id: int
+    title: str
+    status: TaskStatus
+    sprint_number: int | None
+    sprint_label: str | None
+    owner_engineer_id: int | None
+    owner_engineer_name: str | None
+    hours_logged: float
+
+
+class FundedAskReport(BaseModel):
+    id: int
+    title: str
+    category_name: str | None
+    status: str
+    expected_delivery_date: date | None
+    total_hours_logged: float
+    outcomes: list[FundedOutcomeDetail]
+
+
+class CompletedOutcomeDetail(BaseModel):
+    id: int
+    title: str
+    initiative_id: int
+    initiative_title: str
+    initiative_type: InitiativeType
+    category_name: str | None
+    sprint_number: int | None
+    sprint_label: str | None
+    completed_at: datetime | None
+    hours_logged: float
+    forecast_duration_days: float | None

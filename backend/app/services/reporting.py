@@ -13,9 +13,12 @@ from app.models import Engineer, Initiative, KbiDetail, PlatformInitiativeDetail
 from app.models.enums import InitiativeType, TaskStatus
 from app.schemas.reporting import (
     CategoryHours,
+    CompletedOutcomeDetail,
     CompletionByType,
     EngineerDashboard,
     EngineerHoursBreakdown,
+    FundedAskReport,
+    FundedOutcomeDetail,
     InitiativeSummary,
     MonthlyInitiativeReport,
     MonthlyReport,
@@ -33,7 +36,7 @@ from app.services.completion import (
     compute_initiative_completion,
 )
 from app.services.fiscal_year import current_fiscal_year_label
-from app.services.sprint import sprint_bounds, sprint_number_for_date
+from app.services.sprint import sprint_bounds, sprint_label, sprint_number_for_date
 
 
 def _task_hours_map(db: Session, task_ids: list[int]) -> dict[int, float]:
@@ -452,3 +455,94 @@ def build_monthly_report(db: Session, month: str) -> MonthlyReport:
     return MonthlyReport(
         month=month, kbis=kbis, platform_initiatives=platform_initiatives, recurring_ops=recurring_ops
     )
+
+
+def build_funded_change_business_report(db: Session) -> list[FundedAskReport]:
+    """Every funded KBI ("Change Business") Ask with its Outcomes, for the manager-
+    facing funded-projects report. Visible to any actor - this is a read-only report,
+    not a mutation, so it isn't gated behind require_manager like KBI create/edit is.
+    """
+    initiatives = (
+        db.query(Initiative)
+        .join(KbiDetail, KbiDetail.initiative_id == Initiative.id)
+        .filter(Initiative.type == InitiativeType.KBI, KbiDetail.funded.is_(True))
+        .options(
+            selectinload(Initiative.tasks).selectinload(Task.owner),
+            selectinload(Initiative.kbi_detail).selectinload(KbiDetail.category),
+        )
+        .order_by(Initiative.title)
+        .all()
+    )
+    all_task_ids = [t.id for i in initiatives for t in i.tasks]
+    hours_by_task = _task_hours_map(db, all_task_ids)
+
+    reports = []
+    for initiative in initiatives:
+        outcomes = [
+            FundedOutcomeDetail(
+                id=t.id,
+                title=t.title,
+                status=t.status,
+                sprint_number=t.sprint_number,
+                sprint_label=sprint_label(t.sprint_number) if t.sprint_number is not None else None,
+                owner_engineer_id=t.owner_engineer_id,
+                owner_engineer_name=t.owner.name if t.owner else None,
+                hours_logged=hours_by_task.get(t.id, 0.0),
+            )
+            for t in sorted(initiative.tasks, key=lambda t: t.sequence_order)
+        ]
+        reports.append(
+            FundedAskReport(
+                id=initiative.id,
+                title=initiative.title,
+                category_name=_category_name(initiative),
+                status=initiative.status.value,
+                expected_delivery_date=initiative.expected_delivery_date,
+                total_hours_logged=sum(o.hours_logged for o in outcomes),
+                outcomes=outcomes,
+            )
+        )
+    return reports
+
+
+def build_engineer_completed_outcomes(db: Session, engineer: Engineer) -> list[CompletedOutcomeDetail]:
+    """Every Outcome this engineer has completed, across all Asks - the export an
+    engineer uses to carry their delivered work into a Workday goals review. Visible
+    to any actor viewing any engineer, same as the Engineer Dashboard.
+    """
+    tasks = (
+        db.query(Task)
+        .join(Initiative, Task.initiative_id == Initiative.id)
+        .filter(Task.owner_engineer_id == engineer.id, Task.status == TaskStatus.COMPLETE)
+        .options(
+            selectinload(Task.initiative).selectinload(Initiative.kbi_detail).selectinload(KbiDetail.category),
+            selectinload(Task.initiative)
+            .selectinload(Initiative.platform_detail)
+            .selectinload(PlatformInitiativeDetail.category),
+            selectinload(Task.initiative)
+            .selectinload(Initiative.recurring_ops_detail)
+            .selectinload(RecurringOpsDetail.category),
+        )
+        .order_by(Task.completed_at.desc())
+        .all()
+    )
+    hours_by_task = _task_hours_map(db, [t.id for t in tasks])
+
+    return [
+        CompletedOutcomeDetail(
+            id=t.id,
+            title=t.title,
+            initiative_id=t.initiative_id,
+            initiative_title=t.initiative.title,
+            initiative_type=t.initiative.type,
+            category_name=_category_name(t.initiative),
+            sprint_number=t.sprint_number,
+            sprint_label=sprint_label(t.sprint_number) if t.sprint_number is not None else None,
+            completed_at=t.completed_at,
+            hours_logged=hours_by_task.get(t.id, 0.0),
+            forecast_duration_days=(
+                float(t.forecast_duration_days) if t.forecast_duration_days is not None else None
+            ),
+        )
+        for t in tasks
+    ]

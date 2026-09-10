@@ -256,6 +256,41 @@ export interface MonthlyReport {
   recurring_ops: MonthlyInitiativeReport[]
 }
 
+export interface FundedOutcomeDetail {
+  id: number
+  title: string
+  status: TaskStatus
+  sprint_number: number | null
+  sprint_label: string | null
+  owner_engineer_id: number | null
+  owner_engineer_name: string | null
+  hours_logged: number
+}
+
+export interface FundedAskReport {
+  id: number
+  title: string
+  category_name: string | null
+  status: string
+  expected_delivery_date: string | null
+  total_hours_logged: number
+  outcomes: FundedOutcomeDetail[]
+}
+
+export interface CompletedOutcomeDetail {
+  id: number
+  title: string
+  initiative_id: number
+  initiative_title: string
+  initiative_type: InitiativeType
+  category_name: string | null
+  sprint_number: number | null
+  sprint_label: string | null
+  completed_at: string | null
+  hours_logged: number
+  forecast_duration_days: number | null
+}
+
 export interface JiraImportPreview {
   jira_number: string | null
   title: string

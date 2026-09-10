@@ -6,7 +6,9 @@ import { ActorProvider } from './context/ActorContext'
 import { ConfirmProvider } from './context/ConfirmContext'
 import { ToastProvider } from './context/ToastContext'
 import { AskCatalogUploadPage } from './pages/AskCatalogUploadPage'
+import { CompletedOutcomesPage } from './pages/CompletedOutcomesPage'
 import { EngineerDashboardPage } from './pages/EngineerDashboardPage'
+import { FundedChangeBusinessPage } from './pages/FundedChangeBusinessPage'
 import { ImportInitiativePage } from './pages/ImportInitiativePage'
 import { KbiCatalogPage } from './pages/KbiCatalogPage'
 import { KbiDetailPage } from './pages/KbiDetailPage'
@@ -38,6 +40,8 @@ function App() {
                       <Route path="/marketplace" element={<MarketplacePage />} />
                       <Route path="/team" element={<TeamSummaryPage />} />
                       <Route path="/reports/monthly" element={<MonthlyReportPage />} />
+                      <Route path="/reports/funded-change-business" element={<FundedChangeBusinessPage />} />
+                      <Route path="/reports/completed-outcomes" element={<CompletedOutcomesPage />} />
                       <Route path="/kbis" element={<KbiCatalogPage />} />
                       <Route path="/kbis/:id" element={<KbiDetailPage />} />
                       <Route path="/platform-initiatives" element={<PlatformInitiativeCatalogPage />} />

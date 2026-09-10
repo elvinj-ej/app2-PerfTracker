@@ -1193,3 +1193,67 @@ tbody tr.row-claimed { background: color-mix(in srgb, var(--table-head-bg) 60%, 
   font-size: 11.5px;
   color: var(--text-muted);
 }
+
+.funded-report-card {
+  padding: 0;
+}
+
+.funded-report-row {
+  display: grid;
+  grid-template-columns: 2.2fr 1.1fr 0.9fr 1.1fr 0.8fr 0.9fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 20px;
+}
+
+.funded-report-header {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--table-head-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.funded-ask-details {
+  border-bottom: 1px solid var(--row-border);
+}
+.funded-ask-details:last-of-type {
+  border-bottom: none;
+}
+
+.funded-ask-summary {
+  cursor: pointer;
+  list-style: none;
+}
+.funded-ask-summary::-webkit-details-marker {
+  display: none;
+}
+.funded-ask-summary:hover {
+  background: var(--row-hover-bg);
+}
+
+.funded-ask-title {
+  font-weight: 600;
+  color: var(--text-h);
+}
+.funded-ask-title::before {
+  content: '▸';
+  display: inline-block;
+  width: 12px;
+  margin-right: 6px;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+.funded-ask-details[open] .funded-ask-title::before {
+  transform: rotate(90deg);
+}
+
+.funded-ask-empty {
+  padding: 0 20px 16px;
+}
+
+.funded-ask-details .table-scroll {
+  margin: 0 20px 16px;
+}

@@ -19,7 +19,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/', label: 'My Dashboard', icon: 'dashboard', end: true },
       { to: '/marketplace', label: 'Marketplace', icon: 'marketplace' },
       { to: '/team', label: 'Team Summary', icon: 'team' },
-      { to: '/reports/monthly', label: 'Monthly Report', icon: 'report' },
     ],
   },
   {
@@ -33,6 +32,14 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Time Tracking',
     items: [{ to: '/log-time', label: 'Log Time', icon: 'time' }],
+  },
+  {
+    label: 'Reporting',
+    items: [
+      { to: '/reports/monthly', label: 'Monthly Report', icon: 'report' },
+      { to: '/reports/funded-change-business', label: 'Funded Change Business', icon: 'report' },
+      { to: '/reports/completed-outcomes', label: 'Completed Outcomes', icon: 'report' },
+    ],
   },
 ]
 
