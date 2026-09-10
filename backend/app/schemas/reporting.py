@@ -67,6 +67,21 @@ class EngineerHoursBreakdown(BaseModel):
     total_hours: float
 
 
+class CompletionByType(BaseModel):
+    initiative_type: InitiativeType
+    outcomes_completed: int
+    outcomes_total: int
+
+
+class SprintVelocityPoint(BaseModel):
+    sprint_number: int
+    label: str
+    start_date: date
+    end_date: date
+    outcomes_completed: int
+    hours_logged: float
+
+
 class TeamSummary(BaseModel):
     kbis: list[InitiativeSummary]
     platform_initiatives: list[InitiativeSummary]
@@ -74,6 +89,10 @@ class TeamSummary(BaseModel):
     hours_by_category: list[CategoryHours]
     hours_by_engineer: list[EngineerHoursBreakdown]
     tasks: list[TaskSummary]
+    fiscal_year_label: str
+    hours_by_category_fy: list[CategoryHours]
+    completion_by_type: list[CompletionByType]
+    sprint_trend: list[SprintVelocityPoint]
 
 
 class MonthlyTaskDetail(BaseModel):

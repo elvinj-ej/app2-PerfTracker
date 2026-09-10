@@ -197,6 +197,21 @@ export interface EngineerHoursBreakdown {
   total_hours: number
 }
 
+export interface CompletionByType {
+  initiative_type: InitiativeType
+  outcomes_completed: number
+  outcomes_total: number
+}
+
+export interface SprintVelocityPoint {
+  sprint_number: number
+  label: string
+  start_date: string
+  end_date: string
+  outcomes_completed: number
+  hours_logged: number
+}
+
 export interface TeamSummary {
   kbis: InitiativeSummary[]
   platform_initiatives: InitiativeSummary[]
@@ -204,6 +219,10 @@ export interface TeamSummary {
   hours_by_category: CategoryHours[]
   hours_by_engineer: EngineerHoursBreakdown[]
   tasks: TaskSummary[]
+  fiscal_year_label: string
+  hours_by_category_fy: CategoryHours[]
+  completion_by_type: CompletionByType[]
+  sprint_trend: SprintVelocityPoint[]
 }
 
 export interface MonthlyTaskDetail {

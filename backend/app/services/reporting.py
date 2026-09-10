@@ -10,15 +10,17 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import Engineer, Initiative, KbiDetail, PlatformInitiativeDetail, RecurringOpsDetail, Task, TimeEntry
-from app.models.enums import InitiativeType
+from app.models.enums import InitiativeType, TaskStatus
 from app.schemas.reporting import (
     CategoryHours,
+    CompletionByType,
     EngineerDashboard,
     EngineerHoursBreakdown,
     InitiativeSummary,
     MonthlyInitiativeReport,
     MonthlyReport,
     MonthlyTaskDetail,
+    SprintVelocityPoint,
     TaskSummary,
     TeamSummary,
     WeeklyHours,
@@ -30,6 +32,7 @@ from app.services.completion import (
     UpgradeUnitLike,
     compute_initiative_completion,
 )
+from app.services.fiscal_year import current_fiscal_year_label
 from app.services.sprint import sprint_bounds, sprint_number_for_date
 
 
@@ -287,6 +290,59 @@ def build_team_summary(db: Session) -> TeamSummary:
     all_task_hours = _task_hours_map(db, [t.id for t in all_tasks])
     task_summaries = [_build_task_summary(t, all_task_hours, timeline_health_by_initiative) for t in all_tasks]
 
+    fy_label = current_fiscal_year_label()
+    fy_category_rows = (
+        db.query(Initiative.type, func.sum(TimeEntry.hours))
+        .join(Task, TimeEntry.task_id == Task.id)
+        .join(Initiative, Task.initiative_id == Initiative.id)
+        .filter(TimeEntry.fiscal_year_label == fy_label)
+        .group_by(Initiative.type)
+        .all()
+    )
+    hours_by_category_fy = [CategoryHours(initiative_type=itype, hours=float(h)) for itype, h in fy_category_rows]
+
+    totals_by_type = {t: 0 for t in InitiativeType}
+    completed_by_type = {t: 0 for t in InitiativeType}
+    for task in all_tasks:
+        totals_by_type[task.initiative.type] += 1
+        if task.status == TaskStatus.COMPLETE:
+            completed_by_type[task.initiative.type] += 1
+    completion_by_type = [
+        CompletionByType(
+            initiative_type=itype, outcomes_completed=completed_by_type[itype], outcomes_total=totals_by_type[itype]
+        )
+        for itype in InitiativeType
+    ]
+
+    current_sprint = sprint_number_for_date(date.today())
+    trend_start = max(1, current_sprint - 7)
+    sprint_trend = []
+    for n in range(trend_start, current_sprint + 1):
+        s_start, s_end = sprint_bounds(n)
+        completed_count = sum(
+            1
+            for t in all_tasks
+            if t.status == TaskStatus.COMPLETE
+            and t.completed_at is not None
+            and s_start <= t.completed_at.date() <= s_end
+        )
+        hours_logged = (
+            db.query(func.sum(TimeEntry.hours))
+            .filter(TimeEntry.week_start_date >= s_start, TimeEntry.week_start_date <= s_end)
+            .scalar()
+            or 0.0
+        )
+        sprint_trend.append(
+            SprintVelocityPoint(
+                sprint_number=n,
+                label=f"S{n}",
+                start_date=s_start,
+                end_date=s_end,
+                outcomes_completed=completed_count,
+                hours_logged=float(hours_logged),
+            )
+        )
+
     return TeamSummary(
         kbis=kbis,
         platform_initiatives=platform_initiatives,
@@ -294,6 +350,10 @@ def build_team_summary(db: Session) -> TeamSummary:
         hours_by_category=hours_by_category,
         hours_by_engineer=sorted(breakdown_by_engineer.values(), key=lambda b: b.engineer_name),
         tasks=task_summaries,
+        fiscal_year_label=fy_label,
+        hours_by_category_fy=hours_by_category_fy,
+        completion_by_type=completion_by_type,
+        sprint_trend=sprint_trend,
     )
 
 
