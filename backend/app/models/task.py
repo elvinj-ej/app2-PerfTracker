@@ -24,6 +24,9 @@ class Task(Base):
     # until an engineer opts into the Ask and claims it via the owner dropdown.
     owner_engineer_id: Mapped[int | None] = mapped_column(ForeignKey("engineers.id"), nullable=True)
     forecast_duration_days: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
+    # Set when this Outcome was imported from a Jira Epic/Story, for traceability back to
+    # the source issue - same role as Initiative.jira_number plays for Asks.
+    jira_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Source of truth for scheduling: engineers/managers pick a sprint (Sx), never a raw
     # date - start_date/delivery_date below are always derived from it (see sprint.py) and
     # kept only for cheap, join-free reads.

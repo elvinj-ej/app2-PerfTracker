@@ -25,6 +25,7 @@ services:
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
       SEED_ON_START: ${SEED_ON_START:-false}
+      JIRA_BASE_URL: ${JIRA_BASE_URL:-}
       # Unprefixed here: nginx (the frontend container) serves the app at "/" and
       # proxies /api/ straight through, unlike the standalone SQLite deployment
       # which defaults to hosting under /AOSE. Keep these in sync with each

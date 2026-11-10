@@ -8,6 +8,7 @@ export interface TaskPayload {
   stage?: string | null
   owner_engineer_id: number | null
   forecast_duration_days?: number | null
+  jira_number?: string | null
   sprint_number?: number | null
   status?: string
 }

@@ -1,17 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { previewJiraXmlImport, previewWordDocImport } from '../api/initiativeImport'
-import { createKbi, listKbiCategories } from '../api/kbis'
-import { createPlatformInitiative, listPlatformCategories } from '../api/platformInitiatives'
+import { previewJiraIssue } from '../api/initiativeImport'
+import { createKbi, listKbiCategories, listKbis } from '../api/kbis'
+import { createPlatformInitiative, listPlatformCategories, listPlatformInitiatives } from '../api/platformInitiatives'
+import { listRecurringOps } from '../api/recurringOps'
+import { getSprints } from '../api/sprints'
+import { createTask } from '../api/tasks'
 import { Alert } from '../components/common/Alert'
 import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
-import type { JiraImportPreview } from '../types/api'
+import { MAX_FORECAST_DAYS } from '../data/sprintConstants'
+import { getStoredJiraToken, setStoredJiraToken } from '../data/jiraToken'
+import type { JiraIssuePreview } from '../types/api'
 
 type TargetType = 'KBI' | 'PLATFORM'
 
-interface ReviewForm {
+interface AskReviewForm {
   title: string
   jira_number: string
   description: string
@@ -25,10 +30,20 @@ interface ReviewForm {
   category_id: string
 }
 
-function formFromPreview(preview: JiraImportPreview): ReviewForm {
+interface OutcomeReviewForm {
+  title: string
+  description: string
+  jira_number: string
+  forecast: string
+  sprintNumber: string
+  status: string
+  initiativeId: string
+}
+
+function askFormFromPreview(preview: JiraIssuePreview): AskReviewForm {
   return {
     title: preview.title,
-    jira_number: preview.jira_number ?? '',
+    jira_number: preview.jira_number,
     description: preview.description ?? '',
     business_goal: preview.business_goal ?? '',
     ask: '',
@@ -36,8 +51,27 @@ function formFromPreview(preview: JiraImportPreview): ReviewForm {
     expected_delivery_date: preview.expected_delivery_date ?? '',
     priority: preview.priority ?? 'MEDIUM',
     complexity: 'MEDIUM',
-    status: preview.suggested_status,
+    status: preview.suggested_status ?? 'OPEN',
     category_id: '',
+  }
+}
+
+const TASK_STATUS_OPTIONS = [
+  { value: 'NOT_STARTED', label: 'Not Started' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'BLOCKED', label: 'Blocked' },
+  { value: 'COMPLETE', label: 'Complete' },
+]
+
+function outcomeFormFromPreview(preview: JiraIssuePreview): OutcomeReviewForm {
+  return {
+    title: preview.title,
+    description: preview.description ?? '',
+    jira_number: preview.jira_number,
+    forecast: '',
+    sprintNumber: '',
+    status: preview.suggested_task_status ?? 'NOT_STARTED',
+    initiativeId: '',
   }
 }
 
@@ -45,62 +79,96 @@ export function ImportInitiativePage() {
   const { actor } = useActor()
   const queryClient = useQueryClient()
 
-  const [xmlFile, setXmlFile] = useState<File | null>(null)
-  const [wordFile, setWordFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<JiraImportPreview | null>(null)
-  const [form, setForm] = useState<ReviewForm | null>(null)
+  const [jiraToken, setJiraToken] = useState(getStoredJiraToken())
+  const [issueInput, setIssueInput] = useState('')
+  const [preview, setPreview] = useState<JiraIssuePreview | null>(null)
+  const [askForm, setAskForm] = useState<AskReviewForm | null>(null)
+  const [outcomeForm, setOutcomeForm] = useState<OutcomeReviewForm | null>(null)
   const [targetType, setTargetType] = useState<TargetType>('KBI')
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [createdLink, setCreatedLink] = useState<{ to: string; label: string } | null>(null)
 
+  function handleTokenChange(value: string) {
+    setJiraToken(value)
+    setStoredJiraToken(value)
+  }
+
   const { data: kbiCategories } = useQuery({
     queryKey: ['kbi-categories'],
     queryFn: () => listKbiCategories(actor),
-    enabled: targetType === 'KBI',
+    enabled: preview?.kind === 'INITIATIVE' && targetType === 'KBI',
   })
   const { data: platformCategories } = useQuery({
     queryKey: ['platform-categories'],
     queryFn: () => listPlatformCategories(actor),
-    enabled: targetType === 'PLATFORM',
+    enabled: preview?.kind === 'INITIATIVE' && targetType === 'PLATFORM',
   })
   const categories = targetType === 'KBI' ? kbiCategories : platformCategories
 
-  function handlePreviewSuccess(data: JiraImportPreview) {
-    setPreview(data)
-    setForm(formFromPreview(data))
-    setPreviewError(null)
-    setCreatedLink(null)
+  const { data: sprints } = useQuery({
+    queryKey: ['sprints'],
+    queryFn: () => getSprints(actor),
+    enabled: preview?.kind === 'OUTCOME',
+  })
+  const currentSprint = sprints?.find((s) => s.is_current)
+
+  const { data: kbis } = useQuery({ queryKey: ['kbis'], queryFn: () => listKbis(actor), enabled: preview?.kind === 'OUTCOME' })
+  const { data: platforms } = useQuery({
+    queryKey: ['platform-initiatives'],
+    queryFn: () => listPlatformInitiatives(actor),
+    enabled: preview?.kind === 'OUTCOME',
+  })
+  const { data: runOps } = useQuery({
+    queryKey: ['recurring-ops'],
+    queryFn: () => listRecurringOps(actor),
+    enabled: preview?.kind === 'OUTCOME',
+  })
+  const asksLoading = preview?.kind === 'OUTCOME' && (!kbis || !platforms || !runOps)
+
+  const linkableAsks = useMemo(
+    () => [
+      ...(kbis ?? []).map((k) => ({ id: k.id, title: k.title, path: `/kbis/${k.id}` })),
+      ...(platforms ?? []).map((p) => ({ id: p.id, title: p.title, path: `/platform-initiatives/${p.id}` })),
+      ...(runOps ?? []).map((r) => ({ id: r.id, title: r.title, path: `/recurring-ops/${r.id}` })),
+    ],
+    [kbis, platforms, runOps],
+  )
+
+  function resetAfterCreate() {
+    setIssueInput('')
+    setPreview(null)
+    setAskForm(null)
+    setOutcomeForm(null)
   }
 
-  function handlePreviewError(err: unknown) {
-    setPreviewError(err instanceof Error ? err.message : 'Failed to parse file.')
-  }
-
-  const previewXmlMutation = useMutation({
-    mutationFn: (f: File) => previewJiraXmlImport(actor, f),
-    onSuccess: handlePreviewSuccess,
-    onError: handlePreviewError,
+  const previewMutation = useMutation({
+    mutationFn: () => previewJiraIssue(actor, issueInput, jiraToken),
+    onSuccess: (data) => {
+      setPreview(data)
+      setPreviewError(null)
+      setCreatedLink(null)
+      setAskForm(data.kind === 'INITIATIVE' ? askFormFromPreview(data) : null)
+      setOutcomeForm(data.kind === 'OUTCOME' ? outcomeFormFromPreview(data) : null)
+    },
+    onError: (err) => {
+      setPreview(null)
+      setPreviewError(err instanceof Error ? err.message : 'Failed to fetch this issue from Jira.')
+    },
   })
 
-  const previewWordMutation = useMutation({
-    mutationFn: (f: File) => previewWordDocImport(actor, f),
-    onSuccess: handlePreviewSuccess,
-    onError: handlePreviewError,
-  })
-
-  const createMutation = useMutation({
+  const createAskMutation = useMutation({
     mutationFn: async () => {
-      if (!form) throw new Error('Nothing to create yet.')
+      if (!askForm) throw new Error('Nothing to create yet.')
       const basePayload = {
-        title: form.title,
-        description: form.description || null,
-        business_goal: form.business_goal || null,
-        start_date: form.start_date || null,
-        expected_delivery_date: form.expected_delivery_date || null,
-        priority: form.priority || null,
-        status: form.status,
+        title: askForm.title,
+        description: askForm.description || null,
+        business_goal: askForm.business_goal || null,
+        start_date: askForm.start_date || null,
+        expected_delivery_date: askForm.expected_delivery_date || null,
+        priority: askForm.priority || null,
+        status: askForm.status,
       }
-      if (!form.category_id) {
+      if (!askForm.category_id) {
         throw new Error(`Choose a category for the ${targetType === 'KBI' ? 'Change Business' : 'Change Platform'} Ask.`)
       }
       if (targetType === 'KBI') {
@@ -108,16 +176,16 @@ export function ImportInitiativePage() {
           type: 'KBI' as const,
           result: await createKbi(actor, {
             ...basePayload,
-            jira_number: form.jira_number || null,
-            complexity: form.complexity || null,
-            ask: form.ask || null,
-            category_id: Number(form.category_id),
+            jira_number: askForm.jira_number || null,
+            complexity: askForm.complexity || null,
+            ask: askForm.ask || null,
+            category_id: Number(askForm.category_id),
           }),
         }
       }
       return {
         type: 'PLATFORM' as const,
-        result: await createPlatformInitiative(actor, { ...basePayload, category_id: Number(form.category_id) }),
+        result: await createPlatformInitiative(actor, { ...basePayload, category_id: Number(askForm.category_id) }),
       }
     },
     onSuccess: ({ type, result }) => {
@@ -128,17 +196,36 @@ export function ImportInitiativePage() {
         queryClient.invalidateQueries({ queryKey: ['platform-initiatives'] })
         setCreatedLink({ to: `/platform-initiatives/${result.id}`, label: 'View the new Change Platform' })
       }
-      setXmlFile(null)
-      setWordFile(null)
-      setPreview(null)
-      setForm(null)
+      resetAfterCreate()
+    },
+  })
+
+  const createOutcomeMutation = useMutation({
+    mutationFn: async () => {
+      if (!outcomeForm) throw new Error('Nothing to create yet.')
+      if (!outcomeForm.initiativeId) throw new Error('Choose which Ask this Outcome belongs to.')
+      return createTask(actor, Number(outcomeForm.initiativeId), {
+        title: outcomeForm.title,
+        description: outcomeForm.description || null,
+        owner_engineer_id: null,
+        forecast_duration_days: outcomeForm.forecast ? Number(outcomeForm.forecast) : null,
+        jira_number: outcomeForm.jira_number || null,
+        sprint_number: outcomeForm.sprintNumber ? Number(outcomeForm.sprintNumber) : null,
+        status: outcomeForm.status,
+      })
+    },
+    onSuccess: (task) => {
+      const ask = linkableAsks.find((a) => a.id === task.initiative_id)
+      queryClient.invalidateQueries({ queryKey: ['tasks', task.initiative_id] })
+      setCreatedLink({ to: ask?.path ?? '/', label: 'View the Ask this Outcome was added to' })
+      resetAfterCreate()
     },
   })
 
   if (actor.role !== 'manager') {
     return (
       <div className="page">
-        <p className="text-muted">Only a manager can import initiatives.</p>
+        <p className="text-muted">Only a manager can import from Jira.</p>
       </div>
     )
   }
@@ -151,52 +238,41 @@ export function ImportInitiativePage() {
 
       <section className="card">
         <p className="text-muted">
-          Upload a Jira export to pre-fill a new initiative. Either format works. You'll review
-          every field, choose whether it becomes a Change Business or a Change Platform Ask,
-          and edit anything before it's created — nothing is saved until you click Create.
+          Paste a Jira issue URL or key to pull it in live — no export/upload needed. An{' '}
+          <strong>Initiative</strong> becomes a new Change Business or Change Platform Ask; an{' '}
+          <strong>Epic</strong> or <strong>Story</strong> becomes a new Outcome under an existing Ask you pick.
+          You'll review every field before anything is created.
         </p>
 
-        <div className="import-source-row">
-          <FormField label="Jira XML export" hint="Open the issue in Jira, then Export → XML">
+        <FormField
+          label="Jira Personal Access Token"
+          hint="Generate one from your own Jira profile. Stored only in this browser, sent only to Jira."
+        >
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input
-              type="file"
-              accept=".xml"
-              onChange={(e) => {
-                setXmlFile(e.target.files?.[0] ?? null)
-                setPreview(null)
-                setForm(null)
-                setCreatedLink(null)
-              }}
+              type="password"
+              placeholder="Paste your token"
+              value={jiraToken}
+              onChange={(e) => handleTokenChange(e.target.value)}
             />
-          </FormField>
-          <button
-            className="btn btn-secondary"
-            disabled={!xmlFile || previewXmlMutation.isPending}
-            onClick={() => xmlFile && previewXmlMutation.mutate(xmlFile)}
-          >
-            {previewXmlMutation.isPending ? 'Parsing…' : 'Preview Import'}
-          </button>
-        </div>
+            {jiraToken && (
+              <button type="button" className="btn-link" onClick={() => handleTokenChange('')}>
+                Forget
+              </button>
+            )}
+          </div>
+        </FormField>
 
         <div className="import-source-row">
-          <FormField label="Jira Word (.doc) export" hint="Open the issue in Jira, then Export → Word">
-            <input
-              type="file"
-              accept=".doc,.html,.htm"
-              onChange={(e) => {
-                setWordFile(e.target.files?.[0] ?? null)
-                setPreview(null)
-                setForm(null)
-                setCreatedLink(null)
-              }}
-            />
+          <FormField label="Jira URL or issue key" hint="e.g. https://cltd-jira.cochlear.com/browse/IHT-14715 or IHT-14715">
+            <input placeholder="IHT-14715" value={issueInput} onChange={(e) => setIssueInput(e.target.value)} />
           </FormField>
           <button
             className="btn btn-secondary"
-            disabled={!wordFile || previewWordMutation.isPending}
-            onClick={() => wordFile && previewWordMutation.mutate(wordFile)}
+            disabled={!issueInput || !jiraToken || previewMutation.isPending}
+            onClick={() => previewMutation.mutate()}
           >
-            {previewWordMutation.isPending ? 'Parsing…' : 'Preview Import'}
+            {previewMutation.isPending ? 'Fetching…' : 'Fetch from Jira'}
           </button>
         </div>
 
@@ -211,13 +287,20 @@ export function ImportInitiativePage() {
         </section>
       )}
 
-      {preview && form && (
+      {preview && preview.kind === 'UNSUPPORTED' && (
+        <Alert variant="error">
+          "{preview.issue_type}" isn't a supported import type — only Initiative, Epic, and Story issues can be
+          imported.
+        </Alert>
+      )}
+
+      {preview && askForm && preview.kind === 'INITIATIVE' && (
         <section className="card">
           <h2>Review before creating</h2>
           {preview.skipped_linked_issues > 0 && (
             <p className="text-muted">
-              Note: {preview.skipped_linked_issues} linked Jira issue(s) (Blocks/Relates/etc.) were
-              not imported — this app has no equivalent concept.
+              Note: {preview.skipped_linked_issues} linked Jira issue(s) (Blocks/Relates/etc.) were not imported —
+              this app has no equivalent concept.
             </p>
           )}
 
@@ -229,7 +312,7 @@ export function ImportInitiativePage() {
                 checked={targetType === 'KBI'}
                 onChange={() => {
                   setTargetType('KBI')
-                  setForm({ ...form, category_id: '' })
+                  setAskForm({ ...askForm, category_id: '' })
                 }}
               />
               Change Business
@@ -241,7 +324,7 @@ export function ImportInitiativePage() {
                 checked={targetType === 'PLATFORM'}
                 onChange={() => {
                   setTargetType('PLATFORM')
-                  setForm({ ...form, category_id: '' })
+                  setAskForm({ ...askForm, category_id: '' })
                 }}
               />
               Change Platform
@@ -252,51 +335,51 @@ export function ImportInitiativePage() {
             <FormField label="Ask" hint="What needs to be delivered">
               <input
                 placeholder="Ask"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                value={askForm.title}
+                onChange={(e) => setAskForm({ ...askForm, title: e.target.value })}
               />
             </FormField>
             {targetType === 'KBI' && (
               <FormField label="Jira Number" hint="From the imported issue">
                 <input
                   placeholder="Jira number"
-                  value={form.jira_number}
-                  onChange={(e) => setForm({ ...form, jira_number: e.target.value })}
+                  value={askForm.jira_number}
+                  onChange={(e) => setAskForm({ ...askForm, jira_number: e.target.value })}
                 />
               </FormField>
             )}
             <FormField label="Business Goal" hint="The outcome this needs to achieve">
               <input
                 placeholder="Business goal"
-                value={form.business_goal}
-                onChange={(e) => setForm({ ...form, business_goal: e.target.value })}
+                value={askForm.business_goal}
+                onChange={(e) => setAskForm({ ...askForm, business_goal: e.target.value })}
               />
             </FormField>
             {targetType === 'KBI' && (
               <FormField label="Additional Ask Detail" hint="Optional - more on what the Hosting, Platform & Database Team needs to provide">
                 <input
                   placeholder="Additional detail"
-                  value={form.ask}
-                  onChange={(e) => setForm({ ...form, ask: e.target.value })}
+                  value={askForm.ask}
+                  onChange={(e) => setAskForm({ ...askForm, ask: e.target.value })}
                 />
               </FormField>
             )}
             <FormField label="Start Date" hint="When work begins">
               <input
                 type="date"
-                value={form.start_date}
-                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                value={askForm.start_date}
+                onChange={(e) => setAskForm({ ...askForm, start_date: e.target.value })}
               />
             </FormField>
             <FormField label="Expected Delivery" hint="Target completion date">
               <input
                 type="date"
-                value={form.expected_delivery_date}
-                onChange={(e) => setForm({ ...form, expected_delivery_date: e.target.value })}
+                value={askForm.expected_delivery_date}
+                onChange={(e) => setAskForm({ ...askForm, expected_delivery_date: e.target.value })}
               />
             </FormField>
             <FormField label="Priority" hint="How urgent this is">
-              <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+              <select value={askForm.priority} onChange={(e) => setAskForm({ ...askForm, priority: e.target.value })}>
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="HIGH">High</option>
@@ -305,7 +388,7 @@ export function ImportInitiativePage() {
             </FormField>
             {targetType === 'KBI' && (
               <FormField label="Complexity" hint="Expected effort/difficulty">
-                <select value={form.complexity} onChange={(e) => setForm({ ...form, complexity: e.target.value })}>
+                <select value={askForm.complexity} onChange={(e) => setAskForm({ ...askForm, complexity: e.target.value })}>
                   <option value="LOW">Low</option>
                   <option value="MEDIUM">Medium</option>
                   <option value="HIGH">High</option>
@@ -316,10 +399,7 @@ export function ImportInitiativePage() {
               label="Category"
               hint={targetType === 'KBI' ? 'Which Change Business area this belongs to' : 'Upgrade type, improvement, automation, etc.'}
             >
-              <select
-                value={form.category_id}
-                onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-              >
+              <select value={askForm.category_id} onChange={(e) => setAskForm({ ...askForm, category_id: e.target.value })}>
                 <option value="">Category…</option>
                 {(categories ?? []).map((cat) => (
                   <option key={cat.id} value={cat.id}>
@@ -329,7 +409,7 @@ export function ImportInitiativePage() {
               </select>
             </FormField>
             <FormField label="Status" hint="Current state of the initiative">
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+              <select value={askForm.status} onChange={(e) => setAskForm({ ...askForm, status: e.target.value })}>
                 <option value="DRAFT">Draft</option>
                 <option value="OPEN">Open</option>
                 <option value="IN_PROGRESS">In Progress</option>
@@ -343,23 +423,121 @@ export function ImportInitiativePage() {
             <textarea
               className="import-description"
               rows={6}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              value={askForm.description}
+              onChange={(e) => setAskForm({ ...askForm, description: e.target.value })}
             />
           </FormField>
 
-          {createMutation.isError && (
-            <Alert variant="error">{(createMutation.error as Error).message}</Alert>
-          )}
+          {createAskMutation.isError && <Alert variant="error">{(createAskMutation.error as Error).message}</Alert>}
 
           <button
             className="btn btn-primary"
-            disabled={!form.title || !form.category_id || createMutation.isPending}
-            onClick={() => createMutation.mutate()}
+            disabled={!askForm.title || !askForm.category_id || createAskMutation.isPending}
+            onClick={() => createAskMutation.mutate()}
           >
-            {createMutation.isPending
-              ? 'Creating…'
-              : `Create ${targetType === 'KBI' ? 'Change Business' : 'Change Platform'}`}
+            {createAskMutation.isPending ? 'Creating…' : `Create ${targetType === 'KBI' ? 'Change Business' : 'Change Platform'}`}
+          </button>
+        </section>
+      )}
+
+      {preview && outcomeForm && preview.kind === 'OUTCOME' && (
+        <section className="card">
+          <h2>Review before creating</h2>
+          <p className="text-muted">
+            Jira issue type: <strong>{preview.issue_type}</strong> — this will become a new Outcome under an
+            existing Ask.
+          </p>
+          {preview.skipped_linked_issues > 0 && (
+            <p className="text-muted">
+              Note: {preview.skipped_linked_issues} linked Jira issue(s) were not imported — this app has no
+              equivalent concept.
+            </p>
+          )}
+
+          <div className="form-grid">
+            <FormField label="Outcome" hint="What this piece of work delivers">
+              <input
+                placeholder="Outcome title"
+                value={outcomeForm.title}
+                onChange={(e) => setOutcomeForm({ ...outcomeForm, title: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Jira Number" hint="From the imported issue">
+              <input
+                placeholder="Jira number"
+                value={outcomeForm.jira_number}
+                onChange={(e) => setOutcomeForm({ ...outcomeForm, jira_number: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Ask" hint="Which existing Ask this Outcome belongs to">
+              {asksLoading ? (
+                <p className="text-muted">Loading your Asks…</p>
+              ) : linkableAsks.length === 0 ? (
+                <p className="text-muted">No existing Asks found — import the parent Initiative first.</p>
+              ) : (
+                <select
+                  value={outcomeForm.initiativeId}
+                  onChange={(e) => setOutcomeForm({ ...outcomeForm, initiativeId: e.target.value })}
+                >
+                  <option value="">Choose an Ask…</option>
+                  {linkableAsks.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </FormField>
+            <FormField label="Forecast (days)" hint={`Up to ${MAX_FORECAST_DAYS} working days in the sprint`}>
+              <input
+                type="number"
+                min={0}
+                max={MAX_FORECAST_DAYS}
+                value={outcomeForm.forecast}
+                onChange={(e) => setOutcomeForm({ ...outcomeForm, forecast: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Sprint" hint="Delivery window">
+              <select
+                value={outcomeForm.sprintNumber || (currentSprint ? String(currentSprint.number) : '')}
+                onChange={(e) => setOutcomeForm({ ...outcomeForm, sprintNumber: e.target.value })}
+              >
+                <option value="">Unscheduled</option>
+                {(sprints ?? []).map((s) => (
+                  <option key={s.number} value={s.number}>
+                    {s.label} — {s.start_date} – {s.end_date}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <FormField label="Status" hint="Current state of the Outcome">
+              <select value={outcomeForm.status} onChange={(e) => setOutcomeForm({ ...outcomeForm, status: e.target.value })}>
+                {TASK_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+
+          <FormField label="Description" hint="Full details, imported from Jira and editable">
+            <textarea
+              className="import-description"
+              rows={6}
+              value={outcomeForm.description}
+              onChange={(e) => setOutcomeForm({ ...outcomeForm, description: e.target.value })}
+            />
+          </FormField>
+
+          {createOutcomeMutation.isError && <Alert variant="error">{(createOutcomeMutation.error as Error).message}</Alert>}
+
+          <button
+            className="btn btn-primary"
+            disabled={!outcomeForm.title || !outcomeForm.initiativeId || createOutcomeMutation.isPending}
+            onClick={() => createOutcomeMutation.mutate()}
+          >
+            {createOutcomeMutation.isPending ? 'Creating…' : 'Create Outcome'}
           </button>
         </section>
       )}

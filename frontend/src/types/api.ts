@@ -108,6 +108,7 @@ export interface Task {
   stage: TaskStage | null
   owner_engineer_id: number | null
   forecast_duration_days: number | null
+  jira_number: string | null
   sprint_number: number | null
   start_date: string | null
   delivery_date: string | null
@@ -291,15 +292,20 @@ export interface CompletedOutcomeDetail {
   forecast_duration_days: number | null
 }
 
-export interface JiraImportPreview {
-  jira_number: string | null
+export type JiraIssueKind = 'INITIATIVE' | 'OUTCOME' | 'UNSUPPORTED'
+
+export interface JiraIssuePreview {
+  kind: JiraIssueKind
+  jira_number: string
+  issue_type: string
   title: string
   description: string | null
   business_goal: string | null
   start_date: string | null
   expected_delivery_date: string | null
   priority: string | null
-  suggested_status: string
+  suggested_status: string | null
+  suggested_task_status: TaskStatus | null
   skipped_linked_issues: number
 }
 
