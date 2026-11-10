@@ -1,10 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { downloadMonthlyReportExport, getAvailableMonths, getMonthlyReport } from '../api/reports'
 import { Alert } from '../components/common/Alert'
+import { KpiTile } from '../components/common/KpiTile'
+import { CategoryHoursBarChart } from '../components/charts/CategoryHoursBarChart'
 import { ProgressBar } from '../components/charts/ProgressBar'
+import { RankedBarChart, type RankedBarItem } from '../components/charts/RankedBarChart'
+import { CATEGORY_META_BY_TYPE } from '../components/charts/categoryMeta'
 import { useActor } from '../context/ActorContext'
-import type { MonthlyInitiativeReport } from '../types/api'
+import type { InitiativeType, MonthlyInitiativeReport } from '../types/api'
 
 function formatMonthLabel(month: string): string {
   const [year, mon] = month.split('-').map(Number)
@@ -70,17 +74,36 @@ export function MonthlyReportPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (selectedMonth === undefined && months && months.length > 0) {
-      setSelectedMonth(months[0])
-    }
-  }, [months, selectedMonth])
-
   const reportQuery = useQuery({
     queryKey: ['monthly-report', selectedMonth],
     queryFn: () => getMonthlyReport(actor, selectedMonth as string),
     enabled: selectedMonth !== undefined,
   })
+
+  const topAsks: RankedBarItem[] = useMemo(() => {
+    const data = reportQuery.data
+    if (!data) return []
+    const all: { title: string; type: InitiativeType; hours: number }[] = [
+      ...data.kbis.map((i) => ({ title: i.title, type: 'KBI' as const, hours: i.total_hours_this_month })),
+      ...data.platform_initiatives.map((i) => ({ title: i.title, type: 'PLATFORM' as const, hours: i.total_hours_this_month })),
+      ...data.recurring_ops.map((i) => ({ title: i.title, type: 'RECURRING_OPS' as const, hours: i.total_hours_this_month })),
+    ]
+    return all
+      .sort((a, b) => b.hours - a.hours)
+      .slice(0, 10)
+      .map((a, idx) => ({
+        key: `${a.type}-${idx}`,
+        label: a.title,
+        value: a.hours,
+        colorVar: CATEGORY_META_BY_TYPE[a.type].varName,
+      }))
+  }, [reportQuery.data])
+
+  useEffect(() => {
+    if (selectedMonth === undefined && months && months.length > 0) {
+      setSelectedMonth(months[0])
+    }
+  }, [months, selectedMonth])
 
   async function handleExport() {
     if (!selectedMonth) return
@@ -120,20 +143,48 @@ export function MonthlyReportPage() {
 
       {reportQuery.data && (
         <>
+          <div className="kpi-grid">
+            <KpiTile label="Hours logged this month" value={reportQuery.data.total_hours_this_month.toFixed(1)} unit="h" />
+            <KpiTile label="Asks with time logged" value={reportQuery.data.active_ask_count} unit="Asks" />
+          </div>
+
+          <div className="team-summary-charts">
+            <section className="card">
+              <h2>Hours by Category</h2>
+              <CategoryHoursBarChart data={reportQuery.data.hours_by_category} />
+            </section>
+            <section className="card">
+              <h2>Top Asks by Hours This Month</h2>
+              {topAsks.length === 0 ? (
+                <p className="text-muted">No Asks had time logged this month.</p>
+              ) : (
+                <RankedBarChart items={topAsks} />
+              )}
+            </section>
+          </div>
+
+          <p className="text-muted">
+            Only Asks with time logged in {formatMonthLabel(reportQuery.data.month)} are shown below.
+          </p>
+
           <h2 className="section-heading">Change Business</h2>
-          {reportQuery.data.kbis.length === 0 && <p className="text-muted">None.</p>}
+          {reportQuery.data.kbis.length === 0 && <p className="text-muted">No Change Business Asks had time logged this month.</p>}
           {reportQuery.data.kbis.map((initiative) => (
             <MonthlyInitiativeCard key={initiative.id} initiative={initiative} />
           ))}
 
           <h2 className="section-heading">Change Platform</h2>
-          {reportQuery.data.platform_initiatives.length === 0 && <p className="text-muted">None.</p>}
+          {reportQuery.data.platform_initiatives.length === 0 && (
+            <p className="text-muted">No Change Platform Asks had time logged this month.</p>
+          )}
           {reportQuery.data.platform_initiatives.map((initiative) => (
             <MonthlyInitiativeCard key={initiative.id} initiative={initiative} showCategory />
           ))}
 
           <h2 className="section-heading">Run Operations</h2>
-          {reportQuery.data.recurring_ops.length === 0 && <p className="text-muted">None.</p>}
+          {reportQuery.data.recurring_ops.length === 0 && (
+            <p className="text-muted">No Run Operations Asks had time logged this month.</p>
+          )}
           {reportQuery.data.recurring_ops.map((initiative) => (
             <MonthlyInitiativeCard key={initiative.id} initiative={initiative} showCategory />
           ))}

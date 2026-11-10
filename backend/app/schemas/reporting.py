@@ -125,6 +125,9 @@ class MonthlyReport(BaseModel):
     kbis: list[MonthlyInitiativeReport]
     platform_initiatives: list[MonthlyInitiativeReport]
     recurring_ops: list[MonthlyInitiativeReport]
+    hours_by_category: list[CategoryHours] = []
+    total_hours_this_month: float = 0.0
+    active_ask_count: int = 0
 
 
 class FundedOutcomeDetail(BaseModel):

@@ -101,6 +101,43 @@ def test_build_monthly_report_attributes_hours_by_week_start_month(db_session):
     assert august_kbi.total_hours_this_month == 15.0
 
 
+def test_build_monthly_report_excludes_asks_with_no_hours_logged(db_session):
+    engineer = _make_engineer(db_session)
+    active = Initiative(type=InitiativeType.KBI, title="Active Ask", status=InitiativeStatus.IN_PROGRESS)
+    idle = Initiative(type=InitiativeType.KBI, title="Idle Ask", status=InitiativeStatus.IN_PROGRESS)
+    db_session.add_all([active, idle])
+    db_session.flush()
+
+    active_task = Task(
+        initiative_id=active.id, title="Worked on", owner_engineer_id=engineer.id,
+        status=TaskStatus.IN_PROGRESS, sequence_order=0,
+    )
+    idle_task = Task(
+        initiative_id=idle.id, title="Not started", owner_engineer_id=engineer.id,
+        status=TaskStatus.NOT_STARTED, sequence_order=0,
+    )
+    db_session.add_all([active_task, idle_task])
+    db_session.flush()
+    this_week = date.today()
+    db_session.add(
+        TimeEntry(
+            task_id=active_task.id,
+            engineer_id=engineer.id,
+            week_start_date=this_week,
+            fiscal_year_label=fiscal_year_label(this_week),
+            hours=3,
+        )
+    )
+    db_session.commit()
+
+    report = build_monthly_report(db_session, date.today().strftime("%Y-%m"))
+    assert {k.title for k in report.kbis} == {"Active Ask"}
+    assert report.total_hours_this_month == 3.0
+    assert report.active_ask_count == 1
+    kbi_hours = next(c.hours for c in report.hours_by_category if c.initiative_type == InitiativeType.KBI)
+    assert kbi_hours == 3.0
+
+
 def test_build_monthly_report_recurring_ops_have_no_completion_pct(db_session):
     engineer = _make_engineer(db_session)
     initiative = Initiative(type=InitiativeType.RECURRING_OPS, title="Patching", status=InitiativeStatus.OPEN)
@@ -114,6 +151,17 @@ def test_build_monthly_report_recurring_ops_have_no_completion_pct(db_session):
         sequence_order=0,
     )
     db_session.add(task)
+    db_session.flush()
+    this_week = date.today()
+    db_session.add(
+        TimeEntry(
+            task_id=task.id,
+            engineer_id=engineer.id,
+            week_start_date=this_week,
+            fiscal_year_label=fiscal_year_label(this_week),
+            hours=4,
+        )
+    )
     db_session.commit()
 
     report = build_monthly_report(db_session, date.today().strftime("%Y-%m"))
@@ -139,6 +187,25 @@ def test_build_monthly_report_upgrade_completion_uses_units(db_session):
             UpgradeUnit(initiative_id=initiative.id, system_name="SQL-01", status=UpgradeUnitStatus.COMPLETE),
             UpgradeUnit(initiative_id=initiative.id, system_name="SQL-02", status=UpgradeUnitStatus.NOT_STARTED),
         ]
+    )
+    task = Task(
+        initiative_id=initiative.id,
+        title="Upgrade SQL-02",
+        owner_engineer_id=engineer.id,
+        status=TaskStatus.IN_PROGRESS,
+        sequence_order=0,
+    )
+    db_session.add(task)
+    db_session.flush()
+    this_week = date.today()
+    db_session.add(
+        TimeEntry(
+            task_id=task.id,
+            engineer_id=engineer.id,
+            week_start_date=this_week,
+            fiscal_year_label=fiscal_year_label(this_week),
+            hours=6,
+        )
     )
     db_session.commit()
 

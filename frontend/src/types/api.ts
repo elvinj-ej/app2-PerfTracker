@@ -256,6 +256,9 @@ export interface MonthlyReport {
   kbis: MonthlyInitiativeReport[]
   platform_initiatives: MonthlyInitiativeReport[]
   recurring_ops: MonthlyInitiativeReport[]
+  hours_by_category: CategoryHours[]
+  total_hours_this_month: number
+  active_ask_count: number
 }
 
 export interface FundedOutcomeDetail {

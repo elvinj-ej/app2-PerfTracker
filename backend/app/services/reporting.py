@@ -443,18 +443,32 @@ def build_monthly_report(db: Session, month: str) -> MonthlyReport:
             total_hours_this_month=sum(t.hours_this_month for t in tasks),
         )
 
-    kbis = [build_initiative_report(i, with_completion=True) for i in initiatives if i.type == InitiativeType.KBI]
-    platform_initiatives = [
-        build_initiative_report(i, with_completion=True) for i in initiatives if i.type == InitiativeType.PLATFORM
-    ]
-    recurring_ops = [
-        build_initiative_report(i, with_completion=False)
-        for i in initiatives
-        if i.type == InitiativeType.RECURRING_OPS
+    def build_active_reports(itype: InitiativeType, *, with_completion: bool) -> list[MonthlyInitiativeReport]:
+        reports = [build_initiative_report(i, with_completion=with_completion) for i in initiatives if i.type == itype]
+        return [r for r in reports if r.total_hours_this_month > 0]
+
+    kbis = build_active_reports(InitiativeType.KBI, with_completion=True)
+    platform_initiatives = build_active_reports(InitiativeType.PLATFORM, with_completion=True)
+    recurring_ops = build_active_reports(InitiativeType.RECURRING_OPS, with_completion=False)
+
+    hours_by_category = [
+        CategoryHours(initiative_type=InitiativeType.KBI, hours=sum(r.total_hours_this_month for r in kbis)),
+        CategoryHours(
+            initiative_type=InitiativeType.PLATFORM, hours=sum(r.total_hours_this_month for r in platform_initiatives)
+        ),
+        CategoryHours(
+            initiative_type=InitiativeType.RECURRING_OPS, hours=sum(r.total_hours_this_month for r in recurring_ops)
+        ),
     ]
 
     return MonthlyReport(
-        month=month, kbis=kbis, platform_initiatives=platform_initiatives, recurring_ops=recurring_ops
+        month=month,
+        kbis=kbis,
+        platform_initiatives=platform_initiatives,
+        recurring_ops=recurring_ops,
+        hours_by_category=hours_by_category,
+        total_hours_this_month=sum(c.hours for c in hours_by_category),
+        active_ask_count=len(kbis) + len(platform_initiatives) + len(recurring_ops),
     )
 
 

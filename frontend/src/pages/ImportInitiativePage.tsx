@@ -262,46 +262,72 @@ export function ImportInitiativePage() {
       </div>
 
       <section className="card">
-        <p className="text-muted">
-          Paste a Jira issue URL or key to pull it in live — no export/upload needed. An{' '}
-          <strong>Initiative</strong> becomes a new Change Business or Change Platform Ask; an{' '}
-          <strong>Epic</strong> or <strong>Story</strong> becomes a new Outcome under an existing Ask you pick.
-          You'll review every field before anything is created.
-        </p>
-
-        <FormField
-          label="Jira Personal Access Token"
-          hint="Generate one from your own Jira profile. Stored only in this browser, sent only to Jira."
-        >
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input
-              type="password"
-              placeholder="Paste your token"
-              value={jiraToken}
-              onChange={(e) => handleTokenChange(e.target.value)}
-            />
-            {jiraToken && (
-              <button type="button" className="btn-link" onClick={() => handleTokenChange('')}>
-                Forget
-              </button>
-            )}
+        <div className="import-intro">
+          <p className="text-muted">
+            Paste a Jira issue URL or key to pull it in live — no export/upload needed. You'll review every field
+            before anything is created.
+          </p>
+          <div className="import-how-it-works">
+            <div className="import-how-it-works-item">
+              <span className="badge badge-gray">Initiative</span>
+              <span>→ a new Change Business or Change Platform Ask</span>
+            </div>
+            <div className="import-how-it-works-item">
+              <span className="badge badge-gray">Epic / Story</span>
+              <span>→ a new Outcome under an existing Ask you pick</span>
+            </div>
           </div>
-        </FormField>
-
-        <div className="import-source-row">
-          <FormField label="Jira URL or issue key" hint="e.g. https://cltd-jira.cochlear.com/browse/IHT-14715 or IHT-14715">
-            <input placeholder="IHT-14715" value={issueInput} onChange={(e) => setIssueInput(e.target.value)} />
-          </FormField>
-          <button
-            className="btn btn-secondary"
-            disabled={!issueInput || !jiraToken || previewMutation.isPending}
-            onClick={() => previewMutation.mutate()}
-          >
-            {previewMutation.isPending ? 'Fetching…' : 'Fetch from Jira'}
-          </button>
         </div>
 
-        {previewError && <Alert variant="error">{previewError}</Alert>}
+        <div className="import-section">
+          <FormField label="Jira Personal Access Token" hint="Stored only in this browser, sent only to Jira.">
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="password"
+                placeholder="Paste your token"
+                value={jiraToken}
+                onChange={(e) => handleTokenChange(e.target.value)}
+              />
+              {jiraToken && (
+                <button type="button" className="btn-link" onClick={() => handleTokenChange('')}>
+                  Forget
+                </button>
+              )}
+            </div>
+          </FormField>
+          <details className="import-pat-help">
+            <summary>Don't have a token yet? Here's how to create one</summary>
+            <ol>
+              <li>In Jira, click your avatar in the top-right corner, then open your <strong>Profile</strong>.</li>
+              <li>
+                Open the <strong>Personal Access Tokens</strong> tab (or go directly to{' '}
+                <code>your-jira-url/plugins/servlet/pat</code>).
+              </li>
+              <li>
+                Click <strong>Create token</strong>, give it a name like "AOSE import", and choose an expiry.
+              </li>
+              <li>Click <strong>Create</strong> — Jira shows the token once. Copy it right away.</li>
+              <li>Paste it into the field above. It never leaves your browser except to talk to Jira directly.</li>
+            </ol>
+          </details>
+        </div>
+
+        <div className="import-section">
+          <div className="import-source-row">
+            <FormField label="Jira URL or issue key" hint="e.g. https://cltd-jira.cochlear.com/browse/IHT-14715 or IHT-14715">
+              <input placeholder="IHT-14715" value={issueInput} onChange={(e) => setIssueInput(e.target.value)} />
+            </FormField>
+            <button
+              className="btn btn-secondary"
+              disabled={!issueInput || !jiraToken || previewMutation.isPending}
+              onClick={() => previewMutation.mutate()}
+            >
+              {previewMutation.isPending ? 'Fetching…' : 'Fetch from Jira'}
+            </button>
+          </div>
+
+          {previewError && <Alert variant="error">{previewError}</Alert>}
+        </div>
       </section>
 
       {createdLink && (

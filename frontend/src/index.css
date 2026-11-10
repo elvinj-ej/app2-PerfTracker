@@ -896,6 +896,60 @@ select:focus-visible, input:focus-visible, textarea:focus-visible, .btn:focus-vi
   font-size: 13px;
 }
 
+.import-intro p {
+  margin: 0 0 12px;
+}
+
+.import-how-it-works {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.import-how-it-works-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--table-head-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.import-section {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+}
+
+.import-pat-help {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.import-pat-help summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.import-pat-help ol {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.import-pat-help code {
+  background: var(--table-head-bg);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+}
+
 .import-source-row {
   display: flex;
   align-items: flex-end;
