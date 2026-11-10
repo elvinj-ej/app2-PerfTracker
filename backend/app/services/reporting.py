@@ -159,6 +159,7 @@ def _build_task_summary(t: Task, hours_by_task: dict[int, float], timeline_healt
         initiative_title=t.initiative.title,
         initiative_type=t.initiative.type,
         title=t.title,
+        description=t.description,
         stage=t.stage,
         status=t.status,
         forecast_duration_days=(float(t.forecast_duration_days) if t.forecast_duration_days is not None else None),

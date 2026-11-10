@@ -27,6 +27,7 @@ class TaskSummary(BaseModel):
     initiative_title: str
     initiative_type: InitiativeType
     title: str
+    description: str | None = None
     stage: TaskStage | None
     status: TaskStatus
     forecast_duration_days: float | None

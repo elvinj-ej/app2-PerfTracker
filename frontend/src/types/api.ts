@@ -64,6 +64,7 @@ export interface TaskSummary {
   initiative_title: string
   initiative_type: InitiativeType
   title: string
+  description: string | null
   stage: TaskStage | null
   status: TaskStatus
   forecast_duration_days: number | null

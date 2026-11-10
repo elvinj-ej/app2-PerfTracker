@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { createTask, deleteTask, reorderTasks, updateTask, type TaskPayload } from '../../api/tasks'
 import { getSprints } from '../../api/sprints'
 import { Alert } from '../common/Alert'
@@ -43,6 +43,18 @@ export function EditableTaskList({
   const [newOwnerId, setNewOwnerId] = useState(actor.role === 'engineer' ? String(actor.engineerId) : '')
   const [newForecast, setNewForecast] = useState('')
   const [newSprint, setNewSprint] = useState('')
+  const [newDetailsOpen, setNewDetailsOpen] = useState(false)
+  const [newDescription, setNewDescription] = useState('')
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<number>>(new Set())
+
+  function toggleExpanded(taskId: number) {
+    setExpandedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      return next
+    })
+  }
 
   const { data: sprints } = useQuery({ queryKey: ['sprints'], queryFn: () => getSprints(actor) })
   const currentSprint = sprints?.find((s) => s.is_current)
@@ -98,6 +110,8 @@ export function EditableTaskList({
       setNewOwnerId('')
       setNewForecast('')
       setNewSprint(currentSprint ? String(currentSprint.number) : '')
+      setNewDescription('')
+      setNewDetailsOpen(false)
     },
   })
   const bulkCreateMutation = useMutation({
@@ -176,6 +190,7 @@ export function EditableTaskList({
             <thead>
               <tr>
                 <th></th>
+                <th></th>
                 <th>Title</th>
                 <th>Stage</th>
                 <th>Owner</th>
@@ -186,14 +201,26 @@ export function EditableTaskList({
               </tr>
             </thead>
             <tbody>
-              {sorted.map((task, index) => (
-                <tr key={task.id}>
+              {sorted.map((task, index) => {
+                const expanded = expandedTaskIds.has(task.id)
+                return (
+                <Fragment key={task.id}>
+                <tr>
                   <td>
                     <button className="btn-icon" onClick={() => move(index, -1)} disabled={index === 0}>
                       ↑
                     </button>
                     <button className="btn-icon" onClick={() => move(index, 1)} disabled={index === sorted.length - 1}>
                       ↓
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      className="btn-icon"
+                      aria-label={expanded ? `Hide details for ${task.title}` : `Show details for ${task.title}`}
+                      onClick={() => toggleExpanded(task.id)}
+                    >
+                      {expanded ? '▾' : '▸'}
                     </button>
                   </td>
                   <td>
@@ -270,7 +297,30 @@ export function EditableTaskList({
                     </button>
                   </td>
                 </tr>
-              ))}
+                {expanded && (
+                  <tr className="outcome-detail-row">
+                    <td colSpan={showForecast ? 8 : 7}>
+                      <label className="outcome-detail-label" htmlFor={`outcome-detail-${task.id}`}>
+                        Details
+                      </label>
+                      <textarea
+                        id={`outcome-detail-${task.id}`}
+                        rows={3}
+                        defaultValue={task.description ?? ''}
+                        placeholder="What this Outcome involves"
+                        onBlur={(e) => {
+                          const value = e.target.value.trim() || null
+                          if (value !== (task.description ?? null)) {
+                            updateMutation.mutate({ taskId: task.id, payload: { description: value } })
+                          }
+                        }}
+                      />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -369,12 +419,27 @@ export function EditableTaskList({
           <button
             className="btn btn-primary"
             disabled={!newTitle || !newOwnerId}
-            onClick={() => createMutation.mutate(buildPayload(newTitle))}
+            onClick={() => createMutation.mutate({ ...buildPayload(newTitle), description: newDescription || null })}
           >
             Add Outcome
           </button>
         </div>
       )}
+
+      {!bulkMode &&
+        (newDetailsOpen ? (
+          <textarea
+            className="outcome-new-details"
+            rows={3}
+            placeholder="Details (optional) - what this Outcome involves"
+            value={newDescription}
+            onChange={(e) => setNewDescription(e.target.value)}
+          />
+        ) : (
+          <button className="btn-link" onClick={() => setNewDetailsOpen(true)}>
+            + Add details
+          </button>
+        ))}
     </section>
   )
 }

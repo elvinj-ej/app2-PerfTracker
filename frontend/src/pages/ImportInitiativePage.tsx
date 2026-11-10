@@ -8,6 +8,7 @@ import { listRecurringOps } from '../api/recurringOps'
 import { getSprints } from '../api/sprints'
 import { createTask } from '../api/tasks'
 import { Alert } from '../components/common/Alert'
+import { AskPicker, type AskOption } from '../components/common/AskPicker'
 import { FormField } from '../components/common/FormField'
 import { useActor } from '../context/ActorContext'
 import { MAX_FORECAST_DAYS } from '../data/sprintConstants'
@@ -127,12 +128,36 @@ export function ImportInitiativePage() {
 
   const linkableAsks = useMemo(
     () => [
-      ...(kbis ?? []).map((k) => ({ id: k.id, title: k.title, path: `/kbis/${k.id}` })),
-      ...(platforms ?? []).map((p) => ({ id: p.id, title: p.title, path: `/platform-initiatives/${p.id}` })),
-      ...(runOps ?? []).map((r) => ({ id: r.id, title: r.title, path: `/recurring-ops/${r.id}` })),
+      ...(kbis ?? []).map((k) => ({
+        id: k.id,
+        title: k.title,
+        path: `/kbis/${k.id}`,
+        typeLabel: 'Change Business',
+        categoryName: k.category?.name ?? null,
+      })),
+      ...(platforms ?? []).map((p) => ({
+        id: p.id,
+        title: p.title,
+        path: `/platform-initiatives/${p.id}`,
+        typeLabel: 'Change Platform',
+        categoryName: p.category?.name ?? null,
+      })),
+      ...(runOps ?? []).map((r) => ({
+        id: r.id,
+        title: r.title,
+        path: `/recurring-ops/${r.id}`,
+        typeLabel: 'Run Operations',
+        categoryName: r.category?.name ?? null,
+      })),
     ],
     [kbis, platforms, runOps],
   )
+  const askOptions: AskOption[] = linkableAsks.map(({ id, title, typeLabel, categoryName }) => ({
+    id,
+    title,
+    typeLabel,
+    categoryName,
+  }))
 
   function resetAfterCreate() {
     setIssueInput('')
@@ -470,23 +495,12 @@ export function ImportInitiativePage() {
               />
             </FormField>
             <FormField label="Ask" hint="Which existing Ask this Outcome belongs to">
-              {asksLoading ? (
-                <p className="text-muted">Loading your Asks…</p>
-              ) : linkableAsks.length === 0 ? (
-                <p className="text-muted">No existing Asks found — import the parent Initiative first.</p>
-              ) : (
-                <select
-                  value={outcomeForm.initiativeId}
-                  onChange={(e) => setOutcomeForm({ ...outcomeForm, initiativeId: e.target.value })}
-                >
-                  <option value="">Choose an Ask…</option>
-                  {linkableAsks.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.title}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <AskPicker
+                options={askOptions}
+                loading={asksLoading}
+                value={outcomeForm.initiativeId}
+                onChange={(id) => setOutcomeForm({ ...outcomeForm, initiativeId: id })}
+              />
             </FormField>
             <FormField label="Forecast (days)" hint={`Up to ${MAX_FORECAST_DAYS} working days in the sprint`}>
               <input
