@@ -140,7 +140,18 @@ def fetch_issue(base_url: str, token: str, issue_key: str) -> dict[str, Any]:
         response = httpx.get(
             url,
             params={"expand": "names"},
-            headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                # Some Jira deployments sit behind a WAF/bot-protection layer that blocks
+                # scripted HTTP clients by their default User-Agent (e.g. "python-httpx/x")
+                # before the request ever reaches Jira itself, typically as a 503. A
+                # standard browser User-Agent avoids that false-positive block.
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+                ),
+            },
             timeout=15.0,
         )
     except httpx.RequestError as exc:
