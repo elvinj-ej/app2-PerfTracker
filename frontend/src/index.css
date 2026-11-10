@@ -1429,3 +1429,95 @@ tbody tr.row-claimed { background: color-mix(in srgb, var(--table-head-bg) 60%, 
 .funded-ask-details .table-scroll {
   margin: 0 20px 16px;
 }
+
+.ask-group-card {
+  padding: 0;
+}
+
+.ask-group {
+  border-bottom: 1px solid var(--row-border);
+}
+.ask-group:last-of-type {
+  border-bottom: none;
+}
+
+.ask-group-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  cursor: pointer;
+  list-style: none;
+}
+.ask-group-summary::-webkit-details-marker {
+  display: none;
+}
+.ask-group-summary:hover {
+  background: var(--row-hover-bg);
+}
+
+.ask-group-caret {
+  display: inline-block;
+  width: 12px;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+.ask-group[open] .ask-group-caret {
+  transform: rotate(90deg);
+}
+
+.ask-group-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ask-group-label {
+  font-weight: 600;
+  color: var(--text-h);
+  flex-shrink: 0;
+}
+
+.ask-group-health {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ask-group-health .kpi-split {
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.ask-group-health-text {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ask-group-hours {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ask-group .table-scroll {
+  margin: 0 20px 16px;
+}
+
+.ask-group-category {
+  font-size: 12px;
+  display: block;
+}
+
+@media (max-width: 760px) {
+  .ask-group-health-text {
+    display: none;
+  }
+}
