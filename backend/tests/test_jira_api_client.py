@@ -122,8 +122,16 @@ def test_extract_issue_key_rejects_garbage():
         extract_issue_key("not a jira key")
 
 
-def _client_with_transport(handler) -> httpx.Client:
-    return httpx.Client(transport=httpx.MockTransport(handler))
+def _mock_get(handler):
+    """fetch_issue passes trust_env (a Client-constructor-only kwarg) to httpx.get(),
+    which httpx's top-level function accepts but Client.get() does not - drop it before
+    replaying the call against a MockTransport-backed Client."""
+
+    def fake_get(url, **kw):
+        kw.pop("trust_env", None)
+        return httpx.Client(transport=httpx.MockTransport(handler)).get(url, **kw)
+
+    return fake_get
 
 
 def test_fetch_issue_success(monkeypatch):
@@ -131,7 +139,7 @@ def test_fetch_issue_success(monkeypatch):
         assert request.headers["Authorization"] == "Bearer secret-token"
         return httpx.Response(200, json=REAL_INITIATIVE_RESPONSE, headers={"content-type": "application/json"})
 
-    monkeypatch.setattr(httpx, "get", lambda url, **kw: _client_with_transport(handler).get(url, **kw))
+    monkeypatch.setattr(httpx, "get", _mock_get(handler))
     result = fetch_issue("https://cltd-jira.cochlear.com", "secret-token", "IHT-14715")
     assert result["key"] == "IHT-14715"
 
@@ -140,7 +148,7 @@ def test_fetch_issue_401_raises_clear_error(monkeypatch):
     def handler(request):
         return httpx.Response(401, json={"error": "unauthorized"}, headers={"content-type": "application/json"})
 
-    monkeypatch.setattr(httpx, "get", lambda url, **kw: _client_with_transport(handler).get(url, **kw))
+    monkeypatch.setattr(httpx, "get", _mock_get(handler))
     with pytest.raises(JiraImportError, match="rejected this token"):
         fetch_issue("https://cltd-jira.cochlear.com", "bad-token", "IHT-14715")
 
@@ -149,7 +157,7 @@ def test_fetch_issue_404_raises_clear_error(monkeypatch):
     def handler(request):
         return httpx.Response(404, json={}, headers={"content-type": "application/json"})
 
-    monkeypatch.setattr(httpx, "get", lambda url, **kw: _client_with_transport(handler).get(url, **kw))
+    monkeypatch.setattr(httpx, "get", _mock_get(handler))
     with pytest.raises(JiraImportError, match="wasn't found"):
         fetch_issue("https://cltd-jira.cochlear.com", "token", "IHT-00000")
 
@@ -158,7 +166,7 @@ def test_fetch_issue_html_response_treated_as_auth_failure(monkeypatch):
     def handler(request):
         return httpx.Response(200, text="<html>login</html>", headers={"content-type": "text/html"})
 
-    monkeypatch.setattr(httpx, "get", lambda url, **kw: _client_with_transport(handler).get(url, **kw))
+    monkeypatch.setattr(httpx, "get", _mock_get(handler))
     with pytest.raises(JiraImportError, match="didn't return JSON"):
         fetch_issue("https://cltd-jira.cochlear.com", "token", "IHT-14715")
 

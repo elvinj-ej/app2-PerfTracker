@@ -153,6 +153,13 @@ def fetch_issue(base_url: str, token: str, issue_key: str) -> dict[str, Any]:
                 ),
             },
             timeout=15.0,
+            # Jira here is always an internal/intranet host, reached directly - same as a
+            # browser would. httpx's default (trust_env=True) picks up HTTP_PROXY/HTTPS_PROXY
+            # from the environment and tunnels everything through it, including internal
+            # hosts a corporate proxy has no route to (and which browsers reach directly via
+            # Windows' own proxy-bypass rules) - that tunnel attempt fails with a 503 that
+            # looks like Jira itself is unreachable. Ignoring env proxy config avoids that.
+            trust_env=False,
         )
     except httpx.RequestError as exc:
         raise JiraImportError(f"Couldn't reach Jira at {base_url}: {exc}") from exc
